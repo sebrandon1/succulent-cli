@@ -1,0 +1,13 @@
+succulent-cli
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.prof
+vendor/
+.idea/
+.vscode/
+.DS_Store
