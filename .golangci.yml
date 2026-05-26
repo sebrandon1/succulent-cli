@@ -21,6 +21,7 @@ linters:
     rules:
       - linters:
           - errcheck
+          - goconst
         path: _test.go
     paths:
       - third_party$
