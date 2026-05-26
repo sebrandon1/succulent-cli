@@ -33,7 +33,7 @@ var getCmd = &cobra.Command{
 }
 
 var kubeconfigCmd = &cobra.Command{
-	Use:   "kubeconfig",
+	Use:   cmdNameKubeconfig,
 	Short: "Kubeconfig management commands",
 }
 

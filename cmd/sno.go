@@ -51,7 +51,7 @@ the specified environment.`,
 }
 
 var snoKubeconfigCmd = &cobra.Command{
-	Use:   "kubeconfig",
+	Use:   cmdNameKubeconfig,
 	Short: "Download the SNO kubeconfig for an environment",
 	Run: func(_ *cobra.Command, _ []string) {
 		if envName == "" {
