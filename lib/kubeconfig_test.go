@@ -1,0 +1,115 @@
+package lib
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func TestWaitForClusterReadyAllUp(t *testing.T) {
+	html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-05-26</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>up</td><td>%s</td></tr>
+<tr><td>%s-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+</table></body></html>`, testEnv, testEnv, testInstallerIP, testEnv)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
+	if err != nil {
+		t.Fatalf("WaitForClusterReady failed: %v", err)
+	}
+
+	if ip != testInstallerIP {
+		t.Errorf("Expected installer IP %s, got %s", testInstallerIP, ip)
+	}
+}
+
+func TestWaitForClusterReadyEventuallyUp(t *testing.T) {
+	attempt := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempt++
+
+		var status string
+		if attempt >= 2 {
+			status = "up"
+		} else {
+			status = "down"
+		}
+
+		html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-05-26</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>%s</td><td>%s</td></tr>
+</table></body></html>`, testEnv, testEnv, status, testInstallerIP)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
+	if err != nil {
+		t.Fatalf("WaitForClusterReady failed: %v", err)
+	}
+
+	if ip != testInstallerIP {
+		t.Errorf("Expected installer IP %s, got %s", testInstallerIP, ip)
+	}
+
+	if attempt < 2 {
+		t.Errorf("Expected at least 2 attempts, got %d", attempt)
+	}
+}
+
+func TestWaitForClusterReadyNoInstallerIP(t *testing.T) {
+	html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-05-26</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+</table></body></html>`, testEnv, testEnv)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	// Short timeout so test doesn't hang — no installer IP means it times out
+	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard)
+	if err == nil {
+		t.Fatal("Expected error for timeout, got nil")
+	}
+}
+
+func TestWaitForClusterReadyServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error"))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard)
+	if err == nil {
+		t.Fatal("Expected error for timeout after server errors, got nil")
+	}
+}

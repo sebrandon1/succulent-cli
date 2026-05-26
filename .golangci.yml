@@ -1,0 +1,39 @@
+version: "2"
+linters:
+  enable:
+    - goconst
+    - gocritic
+    - gocyclo
+    - misspell
+    - unparam
+  settings:
+    goconst:
+      min-occurrences: 4
+    gocyclo:
+      min-complexity: 15
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    rules:
+      - linters:
+          - errcheck
+          - goconst
+        path: _test.go
+    paths:
+      - third_party$
+      - builtin$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
