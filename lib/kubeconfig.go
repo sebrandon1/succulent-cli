@@ -9,7 +9,7 @@ import (
 )
 
 func RemoveSSHHostKey(ip string) error {
-	cmd := exec.Command("ssh-keygen", "-R", ip)
+	cmd := exec.Command("ssh-keygen", "-R", ip) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -22,13 +22,13 @@ func RemoveSSHHostKey(ip string) error {
 
 func FetchKubeconfig(ip, user, remotePath, destPath string) error {
 	destDir := filepath.Dir(destPath)
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
+	if err := os.MkdirAll(destDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
 	remote := fmt.Sprintf("%s@%s:%s", user, ip, remotePath)
 
-	cmd := exec.Command("scp",
+	cmd := exec.Command("scp", //nolint:gosec
 		"-o", "StrictHostKeyChecking=no",
 		"-o", "UserKnownHostsFile=/dev/null",
 		remote, destPath,

@@ -73,7 +73,7 @@ var snoKubeconfigCmd = &cobra.Command{
 			dest = filepath.Join(home, defaultDestDir, envName+"-sno-kubeconfig")
 		}
 
-		if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
 			fmt.Printf("Error creating destination directory: %v\n", err)
 			os.Exit(1)
 		}
