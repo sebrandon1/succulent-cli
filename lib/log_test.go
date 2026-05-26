@@ -8,11 +8,11 @@ import (
 )
 
 func TestStreamLog(t *testing.T) {
-	mockLog := "PLAY [all] ***\nTASK [setup] ***\nok: [cnfdc7-installer]\n"
+	mockLog := "PLAY [all] ***\nTASK [setup] ***\nok: [testenv1-installer]\n"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/ztp_log/cnfdc7" {
-			t.Errorf("Expected path /ztp_log/cnfdc7, got %s", r.URL.Path)
+		if r.URL.Path != "/ztp_log/testenv1" {
+			t.Errorf("Expected path /ztp_log/testenv1, got %s", r.URL.Path)
 		}
 
 		w.Header().Set("Content-Type", "text/plain")

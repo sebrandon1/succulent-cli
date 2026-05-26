@@ -12,16 +12,16 @@ func TestReprovision(t *testing.T) {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
 
-		if r.URL.Path != "/exposeform/cnfdc7" {
-			t.Errorf("Expected path /exposeform/cnfdc7, got %s", r.URL.Path)
+		if r.URL.Path != "/exposeform/testenv1" {
+			t.Errorf("Expected path /exposeform/testenv1, got %s", r.URL.Path)
 		}
 
 		if err := r.ParseForm(); err != nil {
 			t.Fatalf("Failed to parse form: %v", err)
 		}
 
-		if r.FormValue("mailto") != "test@redhat.com" {
-			t.Errorf("Expected mailto test@redhat.com, got %s", r.FormValue("mailto"))
+		if r.FormValue("mailto") != "test@example.com" {
+			t.Errorf("Expected mailto test@example.com, got %s", r.FormValue("mailto"))
 		}
 
 		if r.FormValue("owner") != "testuser" {
@@ -43,7 +43,7 @@ func TestReprovision(t *testing.T) {
 	client := NewClient(server.URL, true)
 
 	req := &ReprovisionRequest{
-		Email:   "test@redhat.com",
+		Email:   "test@example.com",
 		Owner:   "testuser",
 		Tag:     "4.17",
 		Version: "nightly",
@@ -79,7 +79,7 @@ func TestReprovisionWithOptionalFields(t *testing.T) {
 	client := NewClient(server.URL, true)
 
 	req := &ReprovisionRequest{
-		Email:             "test@redhat.com",
+		Email:             "test@example.com",
 		Owner:             "testuser",
 		Tag:               "4.17",
 		Version:           "nightly",

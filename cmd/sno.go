@@ -88,7 +88,7 @@ var snoKubeconfigCmd = &cobra.Command{
 }
 
 func init() {
-	snoProvisionCmd.Flags().StringVar(&snoOwner, "owner", "", "Kerberos username (owner)")
+	snoProvisionCmd.Flags().StringVar(&snoOwner, "owner", "", "Username (owner)")
 	snoProvisionCmd.Flags().StringVar(&snoEmail, "email", "", "Email address for notifications")
 	snoProvisionCmd.Flags().StringVar(&snoOCPTag, "ocp-tag", "", "OCP tag (e.g., 4.17)")
 	snoProvisionCmd.Flags().StringVar(&snoRelease, "release-type", "nightly", "OCP release type (e.g., nightly, ci)")

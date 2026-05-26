@@ -20,8 +20,8 @@ func TestDeleteEnvironment(t *testing.T) {
 			t.Fatalf("Failed to parse form: %v", err)
 		}
 
-		if r.FormValue("plan") != "cnfdc7" {
-			t.Errorf("Expected plan cnfdc7, got %s", r.FormValue("plan"))
+		if r.FormValue("plan") != "testenv1" {
+			t.Errorf("Expected plan testenv1, got %s", r.FormValue("plan"))
 		}
 
 		w.WriteHeader(http.StatusOK)

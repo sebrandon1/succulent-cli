@@ -1,6 +1,6 @@
 package lib
 
 const (
-	testEnv         = "cnfdc7"
-	testInstallerIP = "10.6.105.126"
+	testEnv         = "testenv1"
+	testInstallerIP = "192.168.1.100"
 )

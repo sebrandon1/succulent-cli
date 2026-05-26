@@ -58,7 +58,7 @@ environment. This POSTs form data to the /exposeform/{env} endpoint.`,
 
 func init() {
 	reprovisionCmd.Flags().StringVar(&reprovEmail, "email", "", "Email address for notifications")
-	reprovisionCmd.Flags().StringVar(&reprovOwner, "owner", "", "Kerberos username (owner)")
+	reprovisionCmd.Flags().StringVar(&reprovOwner, "owner", "", "Username (owner)")
 	reprovisionCmd.Flags().StringVar(&reprovTag, "tag", "", "OCP version tag (e.g., 4.17, 4.18)")
 	reprovisionCmd.Flags().StringVar(&reprovVersion, "version", "nightly", "Release version (e.g., nightly, ci)")
 	reprovisionCmd.Flags().StringVar(&reprovOpenshiftImage, "openshift-image", "", "Full OpenShift image URL")

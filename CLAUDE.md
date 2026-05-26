@@ -4,9 +4,8 @@ This file provides guidance to Claude Code when working with this repository.
 
 ## Project Overview
 
-A Go CLI wrapper around the succulent ZTP lab cluster management service
-(`https://succulent.eng.redhat.com`). Provides both a reusable library (`lib/`)
-and a CLI (`cmd/`) built with Cobra.
+A Go CLI wrapper around the succulent ZTP lab cluster management service.
+Provides both a reusable library (`lib/`) and a CLI (`cmd/`) built with Cobra.
 
 ## Common Commands
 
@@ -45,4 +44,4 @@ Every API domain follows the same pattern:
 
 - Go 1.26+
 - golangci-lint (for `make lint`)
-- VPN connection to Red Hat internal network
+- VPN connection to the succulent service network

@@ -17,7 +17,7 @@ var rootCmd = &cobra.Command{
 	Use:   "succulent-cli",
 	Short: "CLI for the succulent ZTP lab cluster management service",
 	Long: `A CLI tool for interacting with the succulent ZTP lab cluster
-management service at succulent.eng.redhat.com.
+management service.
 
 Supports cluster info, provisioning (MNO and SNO), log streaming,
 kubeconfig retrieval, and environment deletion.`,
@@ -56,7 +56,7 @@ func init() {
 		"Succulent base URL (env: SUCCULENT_URL)")
 	rootCmd.PersistentFlags().StringVar(&envName, "env",
 		envOrDefault("SUCCULENT_ENV", ""),
-		"Environment name (e.g., cnfdc3, cnfdc7)")
+		"Environment name (e.g., env1, env2)")
 	rootCmd.PersistentFlags().BoolVar(&verifySSL, "verify-ssl", false,
 		"Enable SSL certificate verification (default: disabled)")
 

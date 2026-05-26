@@ -12,8 +12,8 @@ func TestProvisionSNO(t *testing.T) {
 			t.Errorf("Expected POST, got %s", r.Method)
 		}
 
-		if r.URL.Path != "/sno/cnfdc7" {
-			t.Errorf("Expected path /sno/cnfdc7, got %s", r.URL.Path)
+		if r.URL.Path != "/sno/testenv1" {
+			t.Errorf("Expected path /sno/testenv1, got %s", r.URL.Path)
 		}
 
 		if err := r.ParseForm(); err != nil {
@@ -24,8 +24,8 @@ func TestProvisionSNO(t *testing.T) {
 			t.Errorf("Expected owner testuser, got %s", r.FormValue("owner"))
 		}
 
-		if r.FormValue("mailto") != "test@redhat.com" {
-			t.Errorf("Expected mailto test@redhat.com, got %s", r.FormValue("mailto"))
+		if r.FormValue("mailto") != "test@example.com" {
+			t.Errorf("Expected mailto test@example.com, got %s", r.FormValue("mailto"))
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -36,7 +36,7 @@ func TestProvisionSNO(t *testing.T) {
 
 	req := &SNOProvisionRequest{
 		Owner:       "testuser",
-		Email:       "test@redhat.com",
+		Email:       "test@example.com",
 		OCPTag:      "4.17",
 		ReleaseType: "nightly",
 	}
@@ -47,11 +47,11 @@ func TestProvisionSNO(t *testing.T) {
 }
 
 func TestGetSNOKubeconfig(t *testing.T) {
-	mockKubeconfig := "apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    server: https://api.sno-cnfdc7.example.com:6443\n"
+	mockKubeconfig := "apiVersion: v1\nkind: Config\nclusters:\n- cluster:\n    server: https://api.sno-testenv1.example.com:6443\n"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/sno_kubeconfig/cnfdc7" {
-			t.Errorf("Expected path /sno_kubeconfig/cnfdc7, got %s", r.URL.Path)
+		if r.URL.Path != "/sno_kubeconfig/testenv1" {
+			t.Errorf("Expected path /sno_kubeconfig/testenv1, got %s", r.URL.Path)
 		}
 
 		w.WriteHeader(http.StatusOK)

@@ -4,12 +4,12 @@
 [![Go Version](https://img.shields.io/github/go-mod/go-version/sebrandon1/succulent-cli)](https://golang.org/)
 [![License](https://img.shields.io/github/license/sebrandon1/succulent-cli)](LICENSE)
 
-A Go CLI for interacting with the [succulent](https://succulent.eng.redhat.com) ZTP lab cluster management service.
+A Go CLI for interacting with the succulent ZTP lab cluster management service.
 
 ## Prerequisites
 
-- Red Hat VPN connection
-- Kerberos ticket (`kinit user@REDHAT.COM`) for authenticated endpoints
+- VPN connection to the succulent service network
+- Valid credentials for authenticated endpoints
 
 ## Installation
 
@@ -36,25 +36,25 @@ Download from the [Releases](https://github.com/sebrandon1/succulent-cli/release
 
 ```bash
 # Get cluster node info as JSON
-succulent-cli get info --env cnfdc7
+succulent-cli get info --env myenv
 
 # Stream the Ansible install log
-succulent-cli get log --env cnfdc7
+succulent-cli get log --env myenv
 
 # Reprovision an MNO cluster
-succulent-cli reprovision --env cnfdc7 --email user@redhat.com --owner username --tag 4.17
+succulent-cli reprovision --env myenv --email user@example.com --owner username --tag 4.17
 
 # Provision an SNO cluster
-succulent-cli sno provision --env cnfdc7 --owner username --email user@redhat.com --ocp-tag 4.17
+succulent-cli sno provision --env myenv --owner username --email user@example.com --ocp-tag 4.17
 
 # Download SNO kubeconfig
-succulent-cli sno kubeconfig --env cnfdc7
+succulent-cli sno kubeconfig --env myenv
 
 # Fetch kubeconfig via SCP from installer node
-succulent-cli kubeconfig fetch --env cnfdc7
+succulent-cli kubeconfig fetch --env myenv
 
 # Delete an environment
-succulent-cli delete --env cnfdc7 --confirm
+succulent-cli delete --env myenv --confirm
 ```
 
 ## Commands
@@ -73,7 +73,7 @@ succulent-cli delete --env cnfdc7 --confirm
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--url` | `SUCCULENT_URL` | `https://succulent.eng.redhat.com` | Succulent base URL |
+| `--url` | `SUCCULENT_URL` | See `lib.DefaultSucculentURL` | Succulent base URL |
 | `--env` | `SUCCULENT_ENV` | — | Environment name (required) |
 | `--verify-ssl` | — | `false` | Enable SSL certificate verification |
 
@@ -82,7 +82,7 @@ succulent-cli delete --env cnfdc7 --confirm
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--email` | — | Email address (required) |
-| `--owner` | — | Kerberos username (required) |
+| `--owner` | — | Username (required) |
 | `--tag` | — | OCP version tag, e.g. 4.17 (required) |
 | `--version` | `nightly` | Release version (nightly, ci) |
 | `--openshift-image` | — | Full OpenShift image URL |
@@ -96,7 +96,7 @@ succulent-cli delete --env cnfdc7 --confirm
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--owner` | — | Kerberos username (required) |
+| `--owner` | — | Username (required) |
 | `--email` | — | Email address (required) |
 | `--ocp-tag` | — | OCP tag (e.g. 4.17) |
 | `--release-type` | `nightly` | Release type (nightly, ci) |
