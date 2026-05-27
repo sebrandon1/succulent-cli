@@ -1,8 +1,6 @@
 # succulent-cli
 
 [![CI](https://github.com/sebrandon1/succulent-cli/actions/workflows/pre-main.yaml/badge.svg)](https://github.com/sebrandon1/succulent-cli/actions/workflows/pre-main.yaml)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/sebrandon1/succulent-cli)](https://golang.org/)
-[![License](https://img.shields.io/github/license/sebrandon1/succulent-cli)](LICENSE)
 
 A Go CLI for interacting with the succulent ZTP lab cluster management service.
 
