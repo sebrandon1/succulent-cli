@@ -31,6 +31,18 @@ type EnvironmentInfo struct {
 	Group string `json:"group,omitempty"`
 }
 
+// EnvironmentDetail represents an environment with enriched info from the infoplan page.
+type EnvironmentDetail struct {
+	Name         string `json:"name"`
+	Group        string `json:"group,omitempty"`
+	Owner        string `json:"owner,omitempty"`
+	CreationDate string `json:"creation_date,omitempty"`
+	NodeCount    int    `json:"node_count"`
+	NodesUp      int    `json:"nodes_up"`
+	InstallerIP  string `json:"installer_ip,omitempty"`
+	Status       string `json:"status"`
+}
+
 // HypershiftRequest represents the Hypershift provisioning form data.
 type HypershiftRequest struct {
 	Owner          string `json:"owner"`
