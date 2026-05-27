@@ -7,6 +7,7 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -26,9 +27,29 @@ var snoProvisionCmd = &cobra.Command{
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456`,
 	Run: func(_ *cobra.Command, _ []string) {
+		owner := snoOwner
+		if owner == "" {
+			owner = viper.GetString("default_owner")
+		}
+
+		email := snoEmail
+		if email == "" {
+			email = viper.GetString("default_email")
+		}
+
+		if owner == "" {
+			fmt.Println("Error: --owner is required (or set default_owner in config)")
+			os.Exit(1)
+		}
+
+		if email == "" {
+			fmt.Println("Error: --email is required (or set default_email in config)")
+			os.Exit(1)
+		}
+
 		req := lib.SNOProvisionRequest{
-			Owner:         snoOwner,
-			Email:         snoEmail,
+			Owner:         owner,
+			Email:         email,
 			OCPTag:        snoOCPTag,
 			ReleaseType:   snoRelease,
 			FullOCPTag:    snoFullTag,
@@ -88,9 +109,6 @@ func init() {
 	snoProvisionCmd.Flags().StringVar(&snoRelease, "release-type", "nightly", "OCP release type (e.g., nightly, ci)")
 	snoProvisionCmd.Flags().StringVar(&snoFullTag, "full-ocp-tag", "", "Full OCP tag (e.g., 4.14.0-0.nightly-2023-12-14-072431)")
 	snoProvisionCmd.Flags().StringVar(&snoFullImage, "full-image", "", "Full image name to use for installation")
-
-	markFlagRequired(snoProvisionCmd.MarkFlagRequired("owner"))
-	markFlagRequired(snoProvisionCmd.MarkFlagRequired("email"))
 
 	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/{env}-sno-kubeconfig)")
 }

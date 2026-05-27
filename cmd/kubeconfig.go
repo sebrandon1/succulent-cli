@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -24,6 +25,9 @@ host keys, and SCP the kubeconfig to a local path.`,
   succulent-cli kubeconfig fetch --env myenv --wait
   succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
 	Run: func(_ *cobra.Command, _ []string) {
+		user := viper.GetString("remote_user")
+		path := viper.GetString("remote_path")
+
 		var installerIP string
 
 		if waitForReady {
@@ -64,7 +68,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 			fmt.Printf("Warning: could not remove SSH host key: %v\n", err)
 		}
 
-		if err := lib.FetchKubeconfig(installerIP, remoteUser, remotePath, dest); err != nil {
+		if err := lib.FetchKubeconfig(installerIP, user, path, dest); err != nil {
 			fmt.Printf("Error fetching kubeconfig: %v\n", err)
 			os.Exit(1)
 		}
@@ -80,4 +84,7 @@ func init() {
 	fetchKubeconfigCmd.Flags().BoolVar(&waitForReady, "wait", false, "Wait for all cluster nodes to be up before fetching")
 	fetchKubeconfigCmd.Flags().IntVar(&maxWaitMinutes, "max-wait", defaultMaxWaitMinutes, "Maximum minutes to wait for cluster ready")
 	fetchKubeconfigCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks when waiting")
+
+	_ = viper.BindPFlag("remote_user", fetchKubeconfigCmd.Flags().Lookup("user"))
+	_ = viper.BindPFlag("remote_path", fetchKubeconfigCmd.Flags().Lookup("path"))
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -28,9 +29,29 @@ var reprovisionCmd = &cobra.Command{
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.17
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.18 --version ci`,
 	Run: func(_ *cobra.Command, _ []string) {
+		email := reprovEmail
+		if email == "" {
+			email = viper.GetString("default_email")
+		}
+
+		owner := reprovOwner
+		if owner == "" {
+			owner = viper.GetString("default_owner")
+		}
+
+		if email == "" {
+			fmt.Println("Error: --email is required (or set default_email in config)")
+			os.Exit(1)
+		}
+
+		if owner == "" {
+			fmt.Println("Error: --owner is required (or set default_owner in config)")
+			os.Exit(1)
+		}
+
 		req := lib.ReprovisionRequest{
-			Email:             reprovEmail,
-			Owner:             reprovOwner,
+			Email:             email,
+			Owner:             owner,
 			Tag:               reprovTag,
 			Version:           reprovVersion,
 			OpenshiftImage:    reprovOpenshiftImage,
@@ -62,8 +83,6 @@ func init() {
 	reprovisionCmd.Flags().StringVar(&reprovEndDate, "end-date", "", "End date for the environment")
 	reprovisionCmd.Flags().StringVar(&reprovKcliParams, "kcli-params", "", "Additional kcli parameters (key:value format)")
 
-	markFlagRequired(reprovisionCmd.MarkFlagRequired("email"))
-	markFlagRequired(reprovisionCmd.MarkFlagRequired("owner"))
 	markFlagRequired(reprovisionCmd.MarkFlagRequired("tag"))
 
 	rootCmd.AddCommand(reprovisionCmd)

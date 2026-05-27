@@ -21,9 +21,7 @@ func TestURLFlagExists(t *testing.T) {
 	}
 
 	if flag.DefValue != lib.DefaultSucculentURL {
-		if envOrDefault("SUCCULENT_URL", "") == "" {
-			t.Errorf("Expected --url default %s, got %s", lib.DefaultSucculentURL, flag.DefValue)
-		}
+		t.Errorf("Expected --url default %s, got %s", lib.DefaultSucculentURL, flag.DefValue)
 	}
 }
 
@@ -74,6 +72,7 @@ func TestRootSubcommands(t *testing.T) {
 		"sno":         false,
 		"watch":       false,
 		"version":     false,
+		"config":      false,
 	}
 
 	for _, cmd := range subcommands {
@@ -105,6 +104,24 @@ func TestKubeconfigSubcommands(t *testing.T) {
 	}
 }
 
+func TestConfigSubcommands(t *testing.T) {
+	subcommands := configCmd.Commands()
+
+	expected := map[string]bool{"show": false, "path": false, "init": false}
+
+	for _, cmd := range subcommands {
+		if _, ok := expected[cmd.Name()]; ok {
+			expected[cmd.Name()] = true
+		}
+	}
+
+	for name, exists := range expected {
+		if !exists {
+			t.Errorf("Expected subcommand %q under 'config', not found", name)
+		}
+	}
+}
+
 func TestSkipEnvValidationForCompletion(t *testing.T) {
 	fakeCompletion := &cobra.Command{Use: "bash"}
 	fakeParent := &cobra.Command{Use: "completion"}
@@ -120,6 +137,16 @@ func TestSkipEnvValidationForHelp(t *testing.T) {
 
 	if !skipEnvValidation(fakeHelp) {
 		t.Error("Expected skipEnvValidation to return true for help command")
+	}
+}
+
+func TestSkipEnvValidationForConfig(t *testing.T) {
+	fakeConfig := &cobra.Command{Use: "show"}
+	fakeParent := &cobra.Command{Use: "config"}
+	fakeParent.AddCommand(fakeConfig)
+
+	if !skipEnvValidation(fakeConfig) {
+		t.Error("Expected skipEnvValidation to return true for config subcommand")
 	}
 }
 
