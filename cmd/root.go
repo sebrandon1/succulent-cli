@@ -3,9 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -30,8 +33,12 @@ kubeconfig retrieval, and environment deletion.`,
 			return nil
 		}
 
+		envName = viper.GetString("env")
+		succulentURL = viper.GetString("url")
+		verifySSL = viper.GetBool("verify_ssl")
+
 		if envName == "" {
-			return fmt.Errorf("--env is required")
+			return fmt.Errorf("--env is required (or set in config file / SUCCULENT_ENV)")
 		}
 
 		sharedClient = lib.NewClient(succulentURL, !verifySSL)
@@ -59,10 +66,19 @@ var snoCmd = &cobra.Command{
 	Short: "SNO cluster management commands",
 }
 
+func configDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	return filepath.Join(home, ".config", "succulent-cli")
+}
+
 func skipEnvValidation(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		name := c.Name()
-		if name == "completion" || name == "help" || name == "__complete" || name == "version" {
+		if name == "completion" || name == "help" || name == "__complete" || name == "version" || name == "config" {
 			return true
 		}
 	}
@@ -70,23 +86,39 @@ func skipEnvValidation(cmd *cobra.Command) bool {
 	return false
 }
 
-func envOrDefault(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
+func initConfig() {
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(configDir())
 
-	return fallback
+	viper.SetEnvPrefix("SUCCULENT")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
+	viper.AutomaticEnv()
+
+	viper.SetDefault("url", lib.DefaultSucculentURL)
+	viper.SetDefault("env", "")
+	viper.SetDefault("verify_ssl", false)
+	viper.SetDefault("remote_user", defaultRemoteUser)
+	viper.SetDefault("remote_path", defaultRemotePath)
+	viper.SetDefault("default_email", "")
+	viper.SetDefault("default_owner", "")
+
+	_ = viper.ReadInConfig()
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringVar(&succulentURL, "url",
-		envOrDefault("SUCCULENT_URL", lib.DefaultSucculentURL),
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVar(&succulentURL, "url", lib.DefaultSucculentURL,
 		"Succulent base URL (env: SUCCULENT_URL)")
-	rootCmd.PersistentFlags().StringVar(&envName, "env",
-		envOrDefault("SUCCULENT_ENV", ""),
+	rootCmd.PersistentFlags().StringVar(&envName, "env", "",
 		"Environment name (e.g., env1, env2)")
 	rootCmd.PersistentFlags().BoolVar(&verifySSL, "verify-ssl", false,
-		"Enable SSL certificate verification (default: disabled)")
+		"Enable SSL certificate verification")
+
+	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
+	_ = viper.BindPFlag("env", rootCmd.PersistentFlags().Lookup("env"))
+	_ = viper.BindPFlag("verify_ssl", rootCmd.PersistentFlags().Lookup("verify-ssl"))
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(kubeconfigCmd)
