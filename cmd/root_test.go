@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/sebrandon1/succulent-cli/lib"
+	"github.com/spf13/cobra"
 )
 
 func TestEnvFlagExists(t *testing.T) {
@@ -100,6 +101,30 @@ func TestKubeconfigSubcommands(t *testing.T) {
 
 	if !found {
 		t.Error("Expected subcommand 'fetch' under 'kubeconfig', not found")
+	}
+}
+
+func TestSkipEnvValidationForCompletion(t *testing.T) {
+	fakeCompletion := &cobra.Command{Use: "bash"}
+	fakeParent := &cobra.Command{Use: "completion"}
+	fakeParent.AddCommand(fakeCompletion)
+
+	if !skipEnvValidation(fakeCompletion) {
+		t.Error("Expected skipEnvValidation to return true for completion subcommand")
+	}
+}
+
+func TestSkipEnvValidationForHelp(t *testing.T) {
+	fakeHelp := &cobra.Command{Use: "help"}
+
+	if !skipEnvValidation(fakeHelp) {
+		t.Error("Expected skipEnvValidation to return true for help command")
+	}
+}
+
+func TestSkipEnvValidationForRegularCommand(t *testing.T) {
+	if skipEnvValidation(infoCmd) {
+		t.Error("Expected skipEnvValidation to return false for info command")
 	}
 }
 

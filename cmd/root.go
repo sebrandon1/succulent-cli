@@ -25,7 +25,11 @@ management service.
 
 Supports cluster info, provisioning (MNO and SNO), log streaming,
 kubeconfig retrieval, and environment deletion.`,
-	PersistentPreRunE: func(_ *cobra.Command, _ []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		if skipEnvValidation(cmd) {
+			return nil
+		}
+
 		if envName == "" {
 			return fmt.Errorf("--env is required")
 		}
@@ -53,6 +57,17 @@ var kubeconfigCmd = &cobra.Command{
 var snoCmd = &cobra.Command{
 	Use:   "sno",
 	Short: "SNO cluster management commands",
+}
+
+func skipEnvValidation(cmd *cobra.Command) bool {
+	for c := cmd; c != nil; c = c.Parent() {
+		name := c.Name()
+		if name == "completion" || name == "help" || name == "__complete" {
+			return true
+		}
+	}
+
+	return false
 }
 
 func envOrDefault(key, fallback string) string {
