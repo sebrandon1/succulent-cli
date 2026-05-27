@@ -73,6 +73,7 @@ func TestRootSubcommands(t *testing.T) {
 		"watch":       false,
 		"version":     false,
 		"config":      false,
+		"list":        false,
 	}
 
 	for _, cmd := range subcommands {

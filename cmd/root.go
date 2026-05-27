@@ -33,15 +33,19 @@ kubeconfig retrieval, and environment deletion.`,
 			return nil
 		}
 
-		envName = viper.GetString("env")
 		succulentURL = viper.GetString("url")
 		verifySSL = viper.GetBool("verify_ssl")
+		sharedClient = lib.NewClient(succulentURL, !verifySSL)
+
+		if skipEnvRequirement(cmd) {
+			return nil
+		}
+
+		envName = viper.GetString("env")
 
 		if envName == "" {
 			return fmt.Errorf("--env is required (or set in config file / SUCCULENT_ENV)")
 		}
-
-		sharedClient = lib.NewClient(succulentURL, !verifySSL)
 
 		return nil
 	},
@@ -73,6 +77,10 @@ func configDir() string {
 	}
 
 	return filepath.Join(home, ".config", "succulent-cli")
+}
+
+func skipEnvRequirement(cmd *cobra.Command) bool {
+	return cmd.Name() == "list"
 }
 
 func skipEnvValidation(cmd *cobra.Command) bool {

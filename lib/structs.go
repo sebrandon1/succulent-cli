@@ -22,6 +22,12 @@ type ClusterInfo struct {
 	Nodes        []NodeInfo `json:"nodes"`
 }
 
+// EnvironmentInfo represents an environment from the main page.
+type EnvironmentInfo struct {
+	Name  string `json:"name"`
+	Group string `json:"group,omitempty"`
+}
+
 // ReprovisionRequest represents the MNO reprovision form data.
 type ReprovisionRequest struct {
 	Email             string `json:"email"`
