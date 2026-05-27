@@ -73,6 +73,7 @@ func TestRootSubcommands(t *testing.T) {
 		"kubeconfig":  false,
 		"sno":         false,
 		"watch":       false,
+		"version":     false,
 	}
 
 	for _, cmd := range subcommands {

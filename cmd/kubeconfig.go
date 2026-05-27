@@ -18,10 +18,11 @@ var (
 var fetchKubeconfigCmd = &cobra.Command{
 	Use:   "fetch",
 	Short: "Fetch kubeconfig from a cluster's installer node",
-	Long: `Scrape the installer node IP from the succulent infoplan page,
-remove stale SSH host keys, and SCP the kubeconfig to a local path.
-
-Optionally wait for all cluster nodes to be up before fetching.`,
+	Long: `Scrape the installer node IP from the infoplan page, remove stale SSH
+host keys, and SCP the kubeconfig to a local path.`,
+	Example: `  succulent-cli kubeconfig fetch --env myenv
+  succulent-cli kubeconfig fetch --env myenv --wait
+  succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
 	Run: func(_ *cobra.Command, _ []string) {
 		var installerIP string
 

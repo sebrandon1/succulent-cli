@@ -24,8 +24,9 @@ var (
 var reprovisionCmd = &cobra.Command{
 	Use:   "reprovision",
 	Short: "Reprovision an MNO cluster",
-	Long: `Submit a reprovisioning request to the succulent service for the specified
-environment. This POSTs form data to the /exposeform/{env} endpoint.`,
+	Long:  `Submit a reprovisioning request to the succulent service for the specified environment.`,
+	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.17
+  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.18 --version ci`,
 	Run: func(_ *cobra.Command, _ []string) {
 		req := lib.ReprovisionRequest{
 			Email:             reprovEmail,
