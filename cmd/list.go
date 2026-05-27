@@ -5,12 +5,14 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
 )
 
 var (
 	listOutputFormat string
 	listNoDetail     bool
+	listNoCache      bool
 	listConcurrency  int
 )
 
@@ -20,8 +22,8 @@ var listCmd = &cobra.Command{
 	Long:  `Fetch the main page and list all available environments with status details.`,
 	Example: `  succulent-cli list
   succulent-cli list --no-detail
-  succulent-cli list --output json
-  succulent-cli list --concurrency 5`,
+  succulent-cli list --no-cache
+  succulent-cli list --output json`,
 	RunE: func(_ *cobra.Command, _ []string) error {
 		if listNoDetail {
 			return listBasic()
@@ -57,9 +59,14 @@ func listBasic() error {
 }
 
 func listDetailed() error {
+	var cache *lib.Cache
+	if !listNoCache && sharedCache != nil {
+		cache = sharedCache
+	}
+
 	fmt.Fprintf(os.Stderr, "Fetching info for all environments (concurrency: %d)...\n", listConcurrency)
 
-	details, err := sharedClient.ListEnvironmentsWithInfo(listConcurrency)
+	details, err := sharedClient.ListEnvironmentsWithInfo(listConcurrency, cache)
 	if err != nil {
 		return fmt.Errorf("listing environments: %w", err)
 	}
@@ -98,6 +105,7 @@ func listDetailed() error {
 func init() {
 	listCmd.Flags().StringVarP(&listOutputFormat, "output", "o", "table", "Output format (json or table)")
 	listCmd.Flags().BoolVar(&listNoDetail, "no-detail", false, "Skip fetching per-environment info (fast mode)")
+	listCmd.Flags().BoolVar(&listNoCache, "no-cache", false, "Bypass the info cache")
 	listCmd.Flags().IntVar(&listConcurrency, "concurrency", 10, "Number of parallel info fetches")
 
 	rootCmd.AddCommand(listCmd)

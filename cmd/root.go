@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ var (
 	envName          string
 	verifySSL        bool
 	sharedClient     *lib.Client
+	sharedCache      *lib.Cache
 	maxWaitMinutes   int
 	pollIntervalSecs int
 )
@@ -36,6 +38,7 @@ kubeconfig retrieval, and environment deletion.`,
 		succulentURL = viper.GetString("url")
 		verifySSL = viper.GetBool("verify_ssl")
 		sharedClient = lib.NewClient(succulentURL, !verifySSL)
+		sharedCache = lib.NewCache(configDir(), 60*time.Second)
 
 		if skipEnvRequirement(cmd) {
 			return nil
