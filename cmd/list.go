@@ -16,11 +16,10 @@ var listCmd = &cobra.Command{
 	Long:  `Fetch the main page and list all available environments with their host groups.`,
 	Example: `  succulent-cli list
   succulent-cli list --output json`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		envs, err := sharedClient.ListEnvironments()
 		if err != nil {
-			fmt.Printf("Error listing environments: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("listing environments: %w", err)
 		}
 
 		if listOutputFormat == "table" {
@@ -37,9 +36,11 @@ var listCmd = &cobra.Command{
 			}
 
 			w.Flush()
-		} else {
-			printJSON(envs)
+
+			return nil
 		}
+
+		return printJSON(envs)
 	},
 }
 

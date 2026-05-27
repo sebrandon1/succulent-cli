@@ -24,7 +24,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 	Example: `  succulent-cli kubeconfig fetch --env myenv
   succulent-cli kubeconfig fetch --env myenv --wait
   succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		user := viper.GetString("remote_user")
 		path := viper.GetString("remote_path")
 
@@ -33,24 +33,21 @@ host keys, and SCP the kubeconfig to a local path.`,
 		if waitForReady {
 			ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stdout)
 			if err != nil {
-				fmt.Printf("Error waiting for cluster: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("waiting for cluster: %w", err)
 			}
 
 			installerIP = ip
 		} else {
 			info, err := sharedClient.GetInfoPlan(envName)
 			if err != nil {
-				fmt.Printf("Error fetching cluster info: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("fetching cluster info: %w", err)
 			}
 
 			installerIP = info.InstallerIP
 		}
 
 		if installerIP == "" {
-			fmt.Println("Error: could not determine installer IP")
-			os.Exit(1)
+			return fmt.Errorf("could not determine installer IP")
 		}
 
 		dest := destPath
@@ -59,8 +56,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 
 			dest, err = defaultDestPath(envName, cmdNameKubeconfig)
 			if err != nil {
-				fmt.Printf("Error: %v\n", err)
-				os.Exit(1)
+				return err
 			}
 		}
 
@@ -69,11 +65,12 @@ host keys, and SCP the kubeconfig to a local path.`,
 		}
 
 		if err := lib.FetchKubeconfig(installerIP, user, path, dest); err != nil {
-			fmt.Printf("Error fetching kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("fetching kubeconfig: %w", err)
 		}
 
 		fmt.Printf("Kubeconfig saved to: %s\n", dest)
+
+		return nil
 	},
 }
 

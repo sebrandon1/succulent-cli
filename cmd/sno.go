@@ -26,7 +26,7 @@ var snoProvisionCmd = &cobra.Command{
 	Long:  `Submit an SNO provisioning request to the succulent service for the specified environment.`,
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		owner := snoOwner
 		if owner == "" {
 			owner = viper.GetString("default_owner")
@@ -38,13 +38,11 @@ var snoProvisionCmd = &cobra.Command{
 		}
 
 		if owner == "" {
-			fmt.Println("Error: --owner is required (or set default_owner in config)")
-			os.Exit(1)
+			return fmt.Errorf("--owner is required (or set default_owner in config)")
 		}
 
 		if email == "" {
-			fmt.Println("Error: --email is required (or set default_email in config)")
-			os.Exit(1)
+			return fmt.Errorf("--email is required (or set default_email in config)")
 		}
 
 		req := lib.SNOProvisionRequest{
@@ -57,11 +55,12 @@ var snoProvisionCmd = &cobra.Command{
 		}
 
 		if err := sharedClient.ProvisionSNO(envName, &req); err != nil {
-			fmt.Printf("Error submitting SNO provision request: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("submitting SNO provision request: %w", err)
 		}
 
 		fmt.Printf("SNO provision request submitted for %s\n", envName)
+
+		return nil
 	},
 }
 
@@ -70,35 +69,31 @@ var snoKubeconfigCmd = &cobra.Command{
 	Short: "Download the SNO kubeconfig for an environment",
 	Example: `  succulent-cli sno kubeconfig --env myenv
   succulent-cli sno kubeconfig --env myenv --dest ./kubeconfig`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		data, err := sharedClient.GetSNOKubeconfig(envName)
 		if err != nil {
-			fmt.Printf("Error fetching SNO kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("fetching SNO kubeconfig: %w", err)
 		}
 
 		dest := snoKCDest
 		if dest == "" {
-			var destErr error
-
-			dest, destErr = defaultDestPath(envName, "sno-kubeconfig")
-			if destErr != nil {
-				fmt.Printf("Error: %v\n", destErr)
-				os.Exit(1)
+			dest, err = defaultDestPath(envName, "sno-kubeconfig")
+			if err != nil {
+				return err
 			}
 		}
 
 		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
-			fmt.Printf("Error creating destination directory: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("creating destination directory: %w", err)
 		}
 
 		if err := os.WriteFile(dest, data, 0o600); err != nil {
-			fmt.Printf("Error writing kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("writing kubeconfig: %w", err)
 		}
 
 		fmt.Printf("SNO kubeconfig saved to: %s\n", dest)
+
+		return nil
 	},
 }
 

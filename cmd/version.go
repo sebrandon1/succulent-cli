@@ -9,8 +9,10 @@ import (
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version of succulent-cli",
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		fmt.Printf("succulent-cli %s\n", rootCmd.Version)
+
+		return nil
 	},
 }
 

@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
@@ -28,7 +27,7 @@ var reprovisionCmd = &cobra.Command{
 	Long:  `Submit a reprovisioning request to the succulent service for the specified environment.`,
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.17
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.18 --version ci`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		email := reprovEmail
 		if email == "" {
 			email = viper.GetString("default_email")
@@ -40,13 +39,11 @@ var reprovisionCmd = &cobra.Command{
 		}
 
 		if email == "" {
-			fmt.Println("Error: --email is required (or set default_email in config)")
-			os.Exit(1)
+			return fmt.Errorf("--email is required (or set default_email in config)")
 		}
 
 		if owner == "" {
-			fmt.Println("Error: --owner is required (or set default_owner in config)")
-			os.Exit(1)
+			return fmt.Errorf("--owner is required (or set default_owner in config)")
 		}
 
 		req := lib.ReprovisionRequest{
@@ -63,11 +60,12 @@ var reprovisionCmd = &cobra.Command{
 		}
 
 		if err := sharedClient.Reprovision(envName, &req); err != nil {
-			fmt.Printf("Error submitting reprovision request: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("submitting reprovision request: %w", err)
 		}
 
 		fmt.Printf("Reprovision request submitted for %s (OCP %s %s)\n", envName, reprovTag, reprovVersion)
+
+		return nil
 	},
 }
 
@@ -83,7 +81,7 @@ func init() {
 	reprovisionCmd.Flags().StringVar(&reprovEndDate, "end-date", "", "End date for the environment")
 	reprovisionCmd.Flags().StringVar(&reprovKcliParams, "kcli-params", "", "Additional kcli parameters (key:value format)")
 
-	markFlagRequired(reprovisionCmd.MarkFlagRequired("tag"))
+	cobra.CheckErr(reprovisionCmd.MarkFlagRequired("tag"))
 
 	rootCmd.AddCommand(reprovisionCmd)
 }

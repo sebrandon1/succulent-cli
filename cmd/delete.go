@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -14,18 +13,18 @@ var deleteCmd = &cobra.Command{
 	Short:   "Delete an environment",
 	Long:    `Delete the specified environment from the succulent service. Requires --confirm flag for safety.`,
 	Example: `  succulent-cli delete --env myenv --confirm`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		if !confirmDelete {
-			fmt.Println("Error: --confirm is required to delete an environment")
-			os.Exit(1)
+			return fmt.Errorf("--confirm is required to delete an environment")
 		}
 
 		if err := sharedClient.DeleteEnvironment(envName); err != nil {
-			fmt.Printf("Error deleting environment: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("deleting environment: %w", err)
 		}
 
 		fmt.Printf("Environment %s deleted successfully\n", envName)
+
+		return nil
 	},
 }
 
