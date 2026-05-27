@@ -174,3 +174,72 @@ func TestHasAttrFalse(t *testing.T) {
 		t.Error("Expected hasAttr to return false for missing attr")
 	}
 }
+
+func TestListEnvironmentsWithInfo(t *testing.T) {
+	mainPage := `<html><body><table>
+<tr style="background-color: #e0f7fa;"><th colspan="3">Hosts TEST</th></tr>
+<tr><th>env1</th><th>
+  <button onclick="location.href='/infoplan/env1'">Info</button>
+</th></tr>
+<tr><th>env2</th><th>
+  <button onclick="location.href='/infoplan/env2'">Info</button>
+</th></tr>
+</table></body></html>`
+
+	env1Info := `<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>env1</td><td>client1</td><td>2026-05-27 12:00 testowner</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>env1-installer</td><td>up</td><td>192.168.1.100</td></tr>
+<tr><td>env1-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+</table></body></html>`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			w.Write([]byte(mainPage))
+		case "/infoplan/env1":
+			w.Write([]byte(env1Info))
+		case "/infoplan/env2":
+			w.Write([]byte("<html><body><table></table></body></html>"))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	details, err := client.ListEnvironmentsWithInfo(5)
+	if err != nil {
+		t.Fatalf("ListEnvironmentsWithInfo failed: %v", err)
+	}
+
+	if len(details) != 2 {
+		t.Fatalf("Expected 2 environments, got %d", len(details))
+	}
+
+	if details[0].Status != "active" {
+		t.Errorf("Expected env1 status active, got %s", details[0].Status)
+	}
+
+	if details[0].NodesUp != 2 {
+		t.Errorf("Expected env1 nodes_up 2, got %d", details[0].NodesUp)
+	}
+
+	if details[0].Owner != "testowner" {
+		t.Errorf("Expected env1 owner testowner, got %s", details[0].Owner)
+	}
+
+	if details[0].InstallerIP != "192.168.1.100" {
+		t.Errorf("Expected env1 installer IP 192.168.1.100, got %s", details[0].InstallerIP)
+	}
+
+	if details[1].Status != "empty" {
+		t.Errorf("Expected env2 status empty, got %s", details[1].Status)
+	}
+
+	if details[1].NodeCount != 0 {
+		t.Errorf("Expected env2 node_count 0, got %d", details[1].NodeCount)
+	}
+}

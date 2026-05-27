@@ -109,11 +109,19 @@ func TestDeleteCommandNoConfirm(t *testing.T) {
 	}
 }
 
-func TestListCommand(t *testing.T) {
-	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
+func listHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.URL.Path {
+	case "/":
 		w.Write([]byte(testMainPageHTML))
-	})
+	case "/infoplan/testenv":
+		w.Write([]byte(testInfoHTML))
+	default:
+		w.Write([]byte("<html><body><table></table></body></html>"))
+	}
+}
+
+func TestListCommand(t *testing.T) {
+	cleanup := setupTestServer(listHandler)
 	defer cleanup()
 
 	rootCmd.SetArgs([]string{"list", "--env", "testenv"})
@@ -123,11 +131,21 @@ func TestListCommand(t *testing.T) {
 	}
 }
 
-func TestListCommandJSON(t *testing.T) {
+func TestListCommandNoDetail(t *testing.T) {
 	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(testMainPageHTML))
 	})
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"list", "--env", "testenv", "--no-detail"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestListCommandJSON(t *testing.T) {
+	cleanup := setupTestServer(listHandler)
 	defer cleanup()
 
 	rootCmd.SetArgs([]string{"list", "--env", "testenv", "--output", "json"})

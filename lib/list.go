@@ -5,6 +5,7 @@ import (
 	"io"
 	"regexp"
 	"strings"
+	"sync"
 
 	"golang.org/x/net/html"
 )
@@ -19,6 +20,72 @@ func (c *Client) ListEnvironments() ([]EnvironmentInfo, error) {
 	defer resp.Body.Close()
 
 	return parseEnvironmentList(resp.Body)
+}
+
+func (c *Client) ListEnvironmentsWithInfo(concurrency int) ([]EnvironmentDetail, error) {
+	envs, err := c.ListEnvironments()
+	if err != nil {
+		return nil, err
+	}
+
+	details := make([]EnvironmentDetail, len(envs))
+	sem := make(chan struct{}, concurrency)
+
+	var wg sync.WaitGroup
+
+	for i, env := range envs {
+		details[i] = EnvironmentDetail{
+			Name:   env.Name,
+			Group:  env.Group,
+			Status: "empty",
+		}
+
+		wg.Add(1)
+
+		go func(idx int, envName string) {
+			defer wg.Done()
+
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			info, infoErr := c.GetInfoPlan(envName)
+			if infoErr != nil || len(info.Nodes) == 0 {
+				return
+			}
+
+			d := &details[idx]
+			d.InstallerIP = info.InstallerIP
+			d.NodeCount = len(info.Nodes)
+			d.CreationDate = info.CreationDate
+
+			if info.CreationDate != "" {
+				parts := strings.Fields(info.CreationDate)
+				if len(parts) >= 3 {
+					d.Owner = parts[len(parts)-1]
+				}
+			}
+
+			nodesUp := 0
+
+			for _, node := range info.Nodes {
+				if node.Status == StatusUp {
+					nodesUp++
+				}
+			}
+
+			d.NodesUp = nodesUp
+
+			if nodesUp == d.NodeCount {
+				d.Status = "active"
+			} else {
+				d.Status = "partial"
+			}
+		}(i, env.Name)
+	}
+
+	wg.Wait()
+
+	return details, nil
 }
 
 func parseEnvironmentList(r io.Reader) ([]EnvironmentInfo, error) {
