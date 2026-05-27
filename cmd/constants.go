@@ -1,6 +1,7 @@
 package cmd
 
 const (
+	cmdNameConfig           = "config"
 	cmdNameKubeconfig       = "kubeconfig"
 	defaultRemoteUser       = "root"
 	defaultRemotePath       = "/root/ocp/auth/kubeconfig"

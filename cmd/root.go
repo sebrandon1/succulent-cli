@@ -78,7 +78,7 @@ func configDir() string {
 func skipEnvValidation(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		name := c.Name()
-		if name == "completion" || name == "help" || name == "__complete" || name == "version" || name == "config" {
+		if name == "completion" || name == "help" || name == "__complete" || name == "version" || name == cmdNameConfig {
 			return true
 		}
 	}

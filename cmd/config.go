@@ -10,7 +10,7 @@ import (
 )
 
 var configCmd = &cobra.Command{
-	Use:   "config",
+	Use:   cmdNameConfig,
 	Short: "Manage succulent-cli configuration",
 }
 
