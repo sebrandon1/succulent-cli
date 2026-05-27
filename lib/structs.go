@@ -3,6 +3,9 @@ package lib
 const (
 	StatusUp   = "up"
 	StatusDown = "down"
+
+	formFieldOwner  = "owner"
+	formFieldMailTo = "mail_to"
 )
 
 // NodeInfo represents a single VM/node from the infoplan page.
@@ -26,6 +29,38 @@ type ClusterInfo struct {
 type EnvironmentInfo struct {
 	Name  string `json:"name"`
 	Group string `json:"group,omitempty"`
+}
+
+// HypershiftRequest represents the Hypershift provisioning form data.
+type HypershiftRequest struct {
+	Owner          string `json:"owner"`
+	Email          string `json:"mail_to"`
+	SNOTag         string `json:"sno_tag,omitempty"`
+	SNORelease     string `json:"sno_release,omitempty"`
+	SNOFullTag     string `json:"sno_full_tag,omitempty"`
+	HCPTag         string `json:"hcp_tag,omitempty"`
+	HCPRelease     string `json:"hcp_release,omitempty"`
+	HCPFullTag     string `json:"hcp_full_tag,omitempty"`
+	VMWorkersCount string `json:"vm_workers_count,omitempty"`
+	ImageOverride  string `json:"image_override,omitempty"`
+}
+
+// ZTPRequest represents the ZTP provisioning form data.
+type ZTPRequest struct {
+	Owner                string `json:"owner"`
+	Email                string `json:"mail_to"`
+	SNOTag               string `json:"sno_tag,omitempty"`
+	SNORelease           string `json:"sno_release,omitempty"`
+	SNOFullTag           string `json:"sno_full_tag,omitempty"`
+	ZTPTag               string `json:"ztp_tag,omitempty"`
+	ZTPRelease           string `json:"ztp_release,omitempty"`
+	ZTPFullTag           string `json:"ztp_full_tag,omitempty"`
+	ZTPType              string `json:"ztp_type,omitempty"`
+	StopBeforeDeployment bool   `json:"stop_before_deployment,omitempty"`
+	VMMastersCount       string `json:"vm_masters_count,omitempty"`
+	BMMastersHosts       string `json:"bm_masters_hosts,omitempty"`
+	BMWorkersHosts       string `json:"bm_workers_hosts,omitempty"`
+	VMWorkersCount       string `json:"vm_workers_count,omitempty"`
 }
 
 // ReprovisionRequest represents the MNO reprovision form data.
