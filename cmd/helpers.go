@@ -7,14 +7,15 @@ import (
 	"path/filepath"
 )
 
-func printJSON(data interface{}) {
+func printJSON(data interface{}) error {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		fmt.Printf("Error marshaling JSON: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("marshaling JSON: %w", err)
 	}
 
 	fmt.Println(string(output))
+
+	return nil
 }
 
 func defaultDestPath(env, suffix string) (string, error) {
@@ -24,11 +25,4 @@ func defaultDestPath(env, suffix string) (string, error) {
 	}
 
 	return filepath.Join(home, defaultDestDir, env+"-"+suffix), nil
-}
-
-func markFlagRequired(err error) {
-	if err != nil {
-		fmt.Printf("Error marking flag as required: %v\n", err)
-		os.Exit(1)
-	}
 }

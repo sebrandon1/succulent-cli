@@ -40,7 +40,7 @@ var ztpProvisionCmd = &cobra.Command{
 	Long:  `Submit a ZTP provisioning request for the specified environment.`,
 	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		owner := ztpOwner
 		if owner == "" {
 			owner = viper.GetString("default_owner")
@@ -52,13 +52,11 @@ var ztpProvisionCmd = &cobra.Command{
 		}
 
 		if owner == "" {
-			fmt.Println("Error: --owner is required (or set default_owner in config)")
-			os.Exit(1)
+			return fmt.Errorf("--owner is required (or set default_owner in config)")
 		}
 
 		if email == "" {
-			fmt.Println("Error: --email is required (or set default_email in config)")
-			os.Exit(1)
+			return fmt.Errorf("--email is required (or set default_email in config)")
 		}
 
 		req := lib.ZTPRequest{
@@ -79,11 +77,12 @@ var ztpProvisionCmd = &cobra.Command{
 		}
 
 		if err := sharedClient.ProvisionZTP(envName, &req); err != nil {
-			fmt.Printf("Error submitting ZTP provision request: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("submitting ZTP provision request: %w", err)
 		}
 
 		fmt.Printf("ZTP provision request submitted for %s (type: %s)\n", envName, ztpType)
+
+		return nil
 	},
 }
 
@@ -92,35 +91,31 @@ var ztpKubeconfigCmd = &cobra.Command{
 	Short: "Download the ZTP kubeconfig",
 	Example: `  succulent-cli ztp kubeconfig --env myenv --choice management
   succulent-cli ztp kubeconfig --env myenv --choice spoke`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		data, err := sharedClient.GetZTPKubeconfig(envName, ztpKCChoice)
 		if err != nil {
-			fmt.Printf("Error fetching ZTP kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("fetching ZTP kubeconfig: %w", err)
 		}
 
 		dest := ztpKCDest
 		if dest == "" {
-			var destErr error
-
-			dest, destErr = defaultDestPath(envName, "ztp-"+ztpKCChoice+"-kubeconfig")
-			if destErr != nil {
-				fmt.Printf("Error: %v\n", destErr)
-				os.Exit(1)
+			dest, err = defaultDestPath(envName, "ztp-"+ztpKCChoice+"-kubeconfig")
+			if err != nil {
+				return err
 			}
 		}
 
 		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
-			fmt.Printf("Error creating destination directory: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("creating destination directory: %w", err)
 		}
 
 		if err := os.WriteFile(dest, data, 0o600); err != nil {
-			fmt.Printf("Error writing kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("writing kubeconfig: %w", err)
 		}
 
 		fmt.Printf("ZTP %s kubeconfig saved to: %s\n", ztpKCChoice, dest)
+
+		return nil
 	},
 }
 
@@ -142,7 +137,7 @@ func init() {
 
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCChoice, "choice", "", "Kubeconfig type: management or spoke")
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCDest, "dest", "", "Local destination path")
-	markFlagRequired(ztpKubeconfigCmd.MarkFlagRequired("choice"))
+	cobra.CheckErr(ztpKubeconfigCmd.MarkFlagRequired("choice"))
 
 	ztpCmd.AddCommand(ztpProvisionCmd)
 	ztpCmd.AddCommand(ztpKubeconfigCmd)

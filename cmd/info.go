@@ -17,18 +17,19 @@ var infoCmd = &cobra.Command{
 	Long:  `Fetch the infoplan page for the specified environment and output structured node information.`,
 	Example: `  succulent-cli get info --env myenv
   succulent-cli get info --env myenv --output table`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		info, err := sharedClient.GetInfoPlan(envName)
 		if err != nil {
-			fmt.Printf("Error fetching info: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("fetching info: %w", err)
 		}
 
 		if outputFormat == "table" {
 			printInfoTable(info)
-		} else {
-			printJSON(info)
+
+			return nil
 		}
+
+		return printJSON(info)
 	},
 }
 

@@ -36,7 +36,7 @@ var hsProvisionCmd = &cobra.Command{
 	Long:  `Submit a Hypershift provisioning request for the specified environment.`,
 	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		owner := hsOwner
 		if owner == "" {
 			owner = viper.GetString("default_owner")
@@ -48,13 +48,11 @@ var hsProvisionCmd = &cobra.Command{
 		}
 
 		if owner == "" {
-			fmt.Println("Error: --owner is required (or set default_owner in config)")
-			os.Exit(1)
+			return fmt.Errorf("--owner is required (or set default_owner in config)")
 		}
 
 		if email == "" {
-			fmt.Println("Error: --email is required (or set default_email in config)")
-			os.Exit(1)
+			return fmt.Errorf("--email is required (or set default_email in config)")
 		}
 
 		req := lib.HypershiftRequest{
@@ -71,11 +69,12 @@ var hsProvisionCmd = &cobra.Command{
 		}
 
 		if err := sharedClient.ProvisionHypershift(envName, &req); err != nil {
-			fmt.Printf("Error submitting Hypershift provision request: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("submitting Hypershift provision request: %w", err)
 		}
 
 		fmt.Printf("Hypershift provision request submitted for %s\n", envName)
+
+		return nil
 	},
 }
 
@@ -84,35 +83,31 @@ var hsKubeconfigCmd = &cobra.Command{
 	Short: "Download the Hypershift kubeconfig",
 	Example: `  succulent-cli hypershift kubeconfig --env myenv --choice management
   succulent-cli hypershift kubeconfig --env myenv --choice hosted`,
-	Run: func(_ *cobra.Command, _ []string) {
+	RunE: func(_ *cobra.Command, _ []string) error {
 		data, err := sharedClient.GetHypershiftKubeconfig(envName, hsKCChoice)
 		if err != nil {
-			fmt.Printf("Error fetching Hypershift kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
 		}
 
 		dest := hsKCDest
 		if dest == "" {
-			var destErr error
-
-			dest, destErr = defaultDestPath(envName, "hypershift-"+hsKCChoice+"-kubeconfig")
-			if destErr != nil {
-				fmt.Printf("Error: %v\n", destErr)
-				os.Exit(1)
+			dest, err = defaultDestPath(envName, "hypershift-"+hsKCChoice+"-kubeconfig")
+			if err != nil {
+				return err
 			}
 		}
 
 		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
-			fmt.Printf("Error creating destination directory: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("creating destination directory: %w", err)
 		}
 
 		if err := os.WriteFile(dest, data, 0o600); err != nil {
-			fmt.Printf("Error writing kubeconfig: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("writing kubeconfig: %w", err)
 		}
 
 		fmt.Printf("Hypershift %s kubeconfig saved to: %s\n", hsKCChoice, dest)
+
+		return nil
 	},
 }
 
@@ -130,7 +125,7 @@ func init() {
 
 	hsKubeconfigCmd.Flags().StringVar(&hsKCChoice, "choice", "", "Kubeconfig type: management or hosted")
 	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path")
-	markFlagRequired(hsKubeconfigCmd.MarkFlagRequired("choice"))
+	cobra.CheckErr(hsKubeconfigCmd.MarkFlagRequired("choice"))
 
 	hypershiftCmd.AddCommand(hsProvisionCmd)
 	hypershiftCmd.AddCommand(hsKubeconfigCmd)
