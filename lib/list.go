@@ -22,7 +22,7 @@ func (c *Client) ListEnvironments() ([]EnvironmentInfo, error) {
 	return parseEnvironmentList(resp.Body)
 }
 
-func (c *Client) ListEnvironmentsWithInfo(concurrency int) ([]EnvironmentDetail, error) {
+func (c *Client) ListEnvironmentsWithInfo(concurrency int, cache *Cache) ([]EnvironmentDetail, error) {
 	envs, err := c.ListEnvironments()
 	if err != nil {
 		return nil, err
@@ -30,6 +30,7 @@ func (c *Client) ListEnvironmentsWithInfo(concurrency int) ([]EnvironmentDetail,
 
 	details := make([]EnvironmentDetail, len(envs))
 	sem := make(chan struct{}, concurrency)
+	fetchedInfos := make([]*ClusterInfo, len(envs))
 
 	var wg sync.WaitGroup
 
@@ -38,6 +39,15 @@ func (c *Client) ListEnvironmentsWithInfo(concurrency int) ([]EnvironmentDetail,
 			Name:   env.Name,
 			Group:  env.Group,
 			Status: "empty",
+		}
+
+		if cache != nil {
+			if cached, ok := cache.GetInfo(env.Name); ok {
+				fillDetail(&details[i], cached)
+				fetchedInfos[i] = cached
+
+				continue
+			}
 		}
 
 		wg.Add(1)
@@ -49,43 +59,66 @@ func (c *Client) ListEnvironmentsWithInfo(concurrency int) ([]EnvironmentDetail,
 			defer func() { <-sem }()
 
 			info, infoErr := c.GetInfoPlan(envName)
-			if infoErr != nil || len(info.Nodes) == 0 {
+			if infoErr != nil {
 				return
 			}
 
-			d := &details[idx]
-			d.InstallerIP = info.InstallerIP
-			d.NodeCount = len(info.Nodes)
-			d.CreationDate = info.CreationDate
+			fetchedInfos[idx] = info
 
-			if info.CreationDate != "" {
-				parts := strings.Fields(info.CreationDate)
-				if len(parts) >= 3 {
-					d.Owner = parts[len(parts)-1]
-				}
+			if len(info.Nodes) == 0 {
+				return
 			}
 
-			nodesUp := 0
-
-			for _, node := range info.Nodes {
-				if node.Status == StatusUp {
-					nodesUp++
-				}
-			}
-
-			d.NodesUp = nodesUp
-
-			if nodesUp == d.NodeCount {
-				d.Status = "active"
-			} else {
-				d.Status = "partial"
-			}
+			fillDetail(&details[idx], info)
 		}(i, env.Name)
 	}
 
 	wg.Wait()
 
+	if cache != nil {
+		toCache := make(map[string]*ClusterInfo)
+
+		for i, info := range fetchedInfos {
+			if info != nil {
+				toCache[envs[i].Name] = info
+			}
+		}
+
+		if len(toCache) > 0 {
+			cache.SetMultipleInfo(toCache)
+		}
+	}
+
 	return details, nil
+}
+
+func fillDetail(d *EnvironmentDetail, info *ClusterInfo) {
+	d.InstallerIP = info.InstallerIP
+	d.NodeCount = len(info.Nodes)
+	d.CreationDate = info.CreationDate
+
+	if info.CreationDate != "" {
+		parts := strings.Fields(info.CreationDate)
+		if len(parts) >= 3 {
+			d.Owner = parts[len(parts)-1]
+		}
+	}
+
+	nodesUp := 0
+
+	for _, node := range info.Nodes {
+		if node.Status == StatusUp {
+			nodesUp++
+		}
+	}
+
+	d.NodesUp = nodesUp
+
+	if nodesUp == d.NodeCount {
+		d.Status = "active"
+	} else {
+		d.Status = "partial"
+	}
 }
 
 func parseEnvironmentList(r io.Reader) ([]EnvironmentInfo, error) {

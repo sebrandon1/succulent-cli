@@ -9,18 +9,39 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var outputFormat string
+var (
+	outputFormat string
+	infoNoCache  bool
+)
 
 var infoCmd = &cobra.Command{
 	Use:   "info",
 	Short: "Get cluster node information for an environment",
 	Long:  `Fetch the infoplan page for the specified environment and output structured node information.`,
 	Example: `  succulent-cli get info --env myenv
-  succulent-cli get info --env myenv --output table`,
+  succulent-cli get info --env myenv --output table
+  succulent-cli get info --env myenv --no-cache`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		info, err := sharedClient.GetInfoPlan(envName)
-		if err != nil {
-			return fmt.Errorf("fetching info: %w", err)
+		var info *lib.ClusterInfo
+
+		if !infoNoCache && sharedCache != nil {
+			if cached, ok := sharedCache.GetInfo(envName); ok {
+				fmt.Fprintln(os.Stderr, "(cached)")
+				info = cached
+			}
+		}
+
+		if info == nil {
+			var err error
+
+			info, err = sharedClient.GetInfoPlan(envName)
+			if err != nil {
+				return fmt.Errorf("fetching info: %w", err)
+			}
+
+			if sharedCache != nil {
+				sharedCache.SetInfo(envName, info)
+			}
 		}
 
 		if outputFormat == "table" {
@@ -71,4 +92,5 @@ func printInfoTable(info *lib.ClusterInfo) {
 
 func init() {
 	infoCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format (json or table)")
+	infoCmd.Flags().BoolVar(&infoNoCache, "no-cache", false, "Bypass the info cache")
 }

@@ -210,7 +210,7 @@ func TestListEnvironmentsWithInfo(t *testing.T) {
 
 	client := NewClient(server.URL, true)
 
-	details, err := client.ListEnvironmentsWithInfo(5)
+	details, err := client.ListEnvironmentsWithInfo(5, nil)
 	if err != nil {
 		t.Fatalf("ListEnvironmentsWithInfo failed: %v", err)
 	}
