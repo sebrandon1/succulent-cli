@@ -22,8 +22,9 @@ var (
 var snoProvisionCmd = &cobra.Command{
 	Use:   "provision",
 	Short: "Provision an SNO cluster",
-	Long: `Submit an SNO provisioning request to the succulent service for
-the specified environment.`,
+	Long:  `Submit an SNO provisioning request to the succulent service for the specified environment.`,
+	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17
+  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456`,
 	Run: func(_ *cobra.Command, _ []string) {
 		req := lib.SNOProvisionRequest{
 			Owner:         snoOwner,
@@ -46,6 +47,8 @@ the specified environment.`,
 var snoKubeconfigCmd = &cobra.Command{
 	Use:   cmdNameKubeconfig,
 	Short: "Download the SNO kubeconfig for an environment",
+	Example: `  succulent-cli sno kubeconfig --env myenv
+  succulent-cli sno kubeconfig --env myenv --dest ./kubeconfig`,
 	Run: func(_ *cobra.Command, _ []string) {
 		data, err := sharedClient.GetSNOKubeconfig(envName)
 		if err != nil {
