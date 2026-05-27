@@ -157,3 +157,57 @@ func TestGetZTPKubeconfigError(t *testing.T) {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
 }
+
+func TestProvisionZTPAllFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("Failed to parse form: %v", err)
+		}
+
+		if r.FormValue("stop_before_deployment") != "on" {
+			t.Errorf("Expected stop_before_deployment on, got %s", r.FormValue("stop_before_deployment"))
+		}
+
+		if r.FormValue("bm-masters-hosts") != "host1,host2,host3" {
+			t.Errorf("Expected bm-masters-hosts, got %s", r.FormValue("bm-masters-hosts"))
+		}
+
+		if r.FormValue("bm-workers-hosts") != "worker1" {
+			t.Errorf("Expected bm-workers-hosts worker1, got %s", r.FormValue("bm-workers-hosts"))
+		}
+
+		if r.FormValue("sno_full_tag") != "4.17.0-0.nightly-2026-01-01-000000" {
+			t.Errorf("Expected sno_full_tag, got %s", r.FormValue("sno_full_tag"))
+		}
+
+		if r.FormValue("ztp_full_tag") != "4.17.0-0.nightly-2026-01-01-000000" {
+			t.Errorf("Expected ztp_full_tag, got %s", r.FormValue("ztp_full_tag"))
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	req := &ZTPRequest{
+		Owner:                "testuser",
+		Email:                "test@example.com",
+		SNOTag:               "4.17",
+		SNORelease:           "nightly",
+		SNOFullTag:           "4.17.0-0.nightly-2026-01-01-000000",
+		ZTPTag:               "4.17",
+		ZTPRelease:           "nightly",
+		ZTPFullTag:           "4.17.0-0.nightly-2026-01-01-000000",
+		ZTPType:              "mno",
+		StopBeforeDeployment: true,
+		VMMastersCount:       "3",
+		BMMastersHosts:       "host1,host2,host3",
+		BMWorkersHosts:       "worker1",
+		VMWorkersCount:       "2",
+	}
+
+	if err := client.ProvisionZTP(testEnv, req); err != nil {
+		t.Fatalf("ProvisionZTP failed: %v", err)
+	}
+}

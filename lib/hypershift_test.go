@@ -127,3 +127,49 @@ func TestGetHypershiftKubeconfigError(t *testing.T) {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
 }
+
+func TestProvisionHypershiftAllFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("Failed to parse form: %v", err)
+		}
+
+		if r.FormValue("sno_full_tag") != "4.17.0-0.nightly-2026-01-01-000000" {
+			t.Errorf("Expected sno_full_tag, got %s", r.FormValue("sno_full_tag"))
+		}
+
+		if r.FormValue("hcp_full_tag") != "4.16.0-rc.1" {
+			t.Errorf("Expected hcp_full_tag, got %s", r.FormValue("hcp_full_tag"))
+		}
+
+		if r.FormValue("vm-workers-count") != "2" {
+			t.Errorf("Expected vm-workers-count 2, got %s", r.FormValue("vm-workers-count"))
+		}
+
+		if r.FormValue("image_override") != "quay.io/test/image:latest" {
+			t.Errorf("Expected image_override, got %s", r.FormValue("image_override"))
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	req := &HypershiftRequest{
+		Owner:          "testuser",
+		Email:          "test@example.com",
+		SNOTag:         "4.17",
+		SNORelease:     "nightly",
+		SNOFullTag:     "4.17.0-0.nightly-2026-01-01-000000",
+		HCPTag:         "4.16",
+		HCPRelease:     "stable",
+		HCPFullTag:     "4.16.0-rc.1",
+		VMWorkersCount: "2",
+		ImageOverride:  "quay.io/test/image:latest",
+	}
+
+	if err := client.ProvisionHypershift(testEnv, req); err != nil {
+		t.Fatalf("ProvisionHypershift failed: %v", err)
+	}
+}

@@ -113,3 +113,47 @@ func TestWaitForClusterReadyServerError(t *testing.T) {
 		t.Fatal("Expected error for timeout after server errors, got nil")
 	}
 }
+
+func TestWaitForClusterReadyPartialUp(t *testing.T) {
+	attempt := 0
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempt++
+
+		var installerStatus, workerStatus string
+		if attempt >= 2 {
+			installerStatus = "up"
+			workerStatus = "up"
+		} else {
+			installerStatus = "up"
+			workerStatus = "down"
+		}
+
+		html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-05-27</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>%s</td><td>%s</td></tr>
+<tr><td>%s-worker-0</td><td>%s</td><td>192.168.1.101</td></tr>
+</table></body></html>`, testEnv, testEnv, installerStatus, testInstallerIP, testEnv, workerStatus)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
+	if err != nil {
+		t.Fatalf("WaitForClusterReady failed: %v", err)
+	}
+
+	if ip != testInstallerIP {
+		t.Errorf("Expected installer IP %s, got %s", testInstallerIP, ip)
+	}
+
+	if attempt < 2 {
+		t.Errorf("Expected at least 2 attempts for partial-up, got %d", attempt)
+	}
+}
