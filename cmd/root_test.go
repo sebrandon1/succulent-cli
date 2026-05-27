@@ -74,6 +74,8 @@ func TestRootSubcommands(t *testing.T) {
 		"version":     false,
 		"config":      false,
 		"list":        false,
+		"hypershift":  false,
+		"ztp":         false,
 	}
 
 	for _, cmd := range subcommands {

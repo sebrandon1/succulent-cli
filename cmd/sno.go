@@ -21,7 +21,7 @@ var (
 )
 
 var snoProvisionCmd = &cobra.Command{
-	Use:   "provision",
+	Use:   cmdNameProvision,
 	Short: "Provision an SNO cluster",
 	Long:  `Submit an SNO provisioning request to the succulent service for the specified environment.`,
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17
