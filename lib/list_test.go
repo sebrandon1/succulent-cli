@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"golang.org/x/net/html"
 )
 
 const mockMainPageHTML = `<html><body>
@@ -130,5 +132,45 @@ func TestListEnvironmentsServerError(t *testing.T) {
 	_, err := client.ListEnvironments()
 	if err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
+	}
+}
+
+func TestGetAttrNotFound(t *testing.T) {
+	node := &html.Node{
+		Type: html.ElementNode,
+		Data: "button",
+		Attr: []html.Attribute{
+			{Key: "type", Val: "button"},
+		},
+	}
+
+	result := getAttr(node, "onclick")
+	if result != "" {
+		t.Errorf("Expected empty string for missing attr, got %s", result)
+	}
+}
+
+func TestHasAttrTrue(t *testing.T) {
+	node := &html.Node{
+		Type: html.ElementNode,
+		Data: "th",
+		Attr: []html.Attribute{
+			{Key: "colspan", Val: "3"},
+		},
+	}
+
+	if !hasAttr(node, "colspan") {
+		t.Error("Expected hasAttr to return true for colspan")
+	}
+}
+
+func TestHasAttrFalse(t *testing.T) {
+	node := &html.Node{
+		Type: html.ElementNode,
+		Data: "th",
+	}
+
+	if hasAttr(node, "colspan") {
+		t.Error("Expected hasAttr to return false for missing attr")
 	}
 }

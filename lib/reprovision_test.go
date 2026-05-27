@@ -113,3 +113,45 @@ func TestReprovisionError(t *testing.T) {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
 }
+
+func TestReprovisionAllOptionalFields(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Fatalf("Failed to parse form: %v", err)
+		}
+
+		if r.FormValue("openshift_image") != "quay.io/test/ocp:4.17" {
+			t.Errorf("Expected openshift_image, got %s", r.FormValue("openshift_image"))
+		}
+
+		if r.FormValue("end_date") != "2026-12-31" {
+			t.Errorf("Expected end_date, got %s", r.FormValue("end_date"))
+		}
+
+		if r.FormValue("kcli_params") != "disconnected:False" {
+			t.Errorf("Expected kcli_params, got %s", r.FormValue("kcli_params"))
+		}
+
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	req := &ReprovisionRequest{
+		Email:             "test@example.com",
+		Owner:             "testuser",
+		Tag:               "4.17",
+		Version:           "nightly",
+		OpenshiftImage:    "quay.io/test/ocp:4.17",
+		DiskSize:          "100",
+		VirtualWorkers:    "true",
+		AdditionalWorkers: "worker1,worker2",
+		EndDate:           "2026-12-31",
+		KcliParams:        "disconnected:False",
+	}
+
+	if err := client.Reprovision(testEnv, req); err != nil {
+		t.Fatalf("Reprovision failed: %v", err)
+	}
+}

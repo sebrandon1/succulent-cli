@@ -181,3 +181,30 @@ func TestGetInfoPlanMultipleIPs(t *testing.T) {
 		t.Errorf("Expected first IP 192.168.1.100, got %s", info.Nodes[0].IP)
 	}
 }
+
+func TestGetInfoPlanSingleCellRow(t *testing.T) {
+	html := `<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>testenv1</td><td>client1</td><td>2026-05-27</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>only-one-cell</td></tr>
+<tr><td>testenv1-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+</table></body></html>`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL, true)
+
+	info, err := client.GetInfoPlan(testEnv)
+	if err != nil {
+		t.Fatalf("GetInfoPlan failed: %v", err)
+	}
+
+	if len(info.Nodes) != 1 {
+		t.Errorf("Expected 1 node (single-cell row skipped), got %d", len(info.Nodes))
+	}
+}
