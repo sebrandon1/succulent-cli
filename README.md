@@ -114,6 +114,19 @@ succulent-cli delete --env myenv --confirm
 | `--max-wait` | `60` | Maximum wait time in minutes |
 | `--poll-interval` | `30` | Seconds between status checks |
 
+## Shell Completion
+
+```bash
+# Bash (add to ~/.bashrc)
+source <(succulent-cli completion bash)
+
+# Zsh (add to ~/.zshrc)
+source <(succulent-cli completion zsh)
+
+# Fish
+succulent-cli completion fish | source
+```
+
 ## Development
 
 ```bash
