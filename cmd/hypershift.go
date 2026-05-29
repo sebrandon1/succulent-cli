@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
@@ -75,20 +73,9 @@ var hsKubeconfigCmd = &cobra.Command{
 			return fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
 		}
 
-		dest := hsKCDest
-		if dest == "" {
-			dest, err = defaultDestPath(envName, "hypershift-"+hsKCChoice+"-kubeconfig")
-			if err != nil {
-				return err
-			}
-		}
-
-		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
-			return fmt.Errorf("creating destination directory: %w", err)
-		}
-
-		if err := os.WriteFile(dest, data, 0o600); err != nil {
-			return fmt.Errorf("writing kubeconfig: %w", err)
+		dest, err := saveKubeconfig(data, hsKCDest, envName, "hypershift-"+hsKCChoice+"-kubeconfig")
+		if err != nil {
+			return err
 		}
 
 		fmt.Printf("Hypershift %s kubeconfig saved to: %s\n", hsKCChoice, dest)

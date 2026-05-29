@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
@@ -61,20 +59,9 @@ var snoKubeconfigCmd = &cobra.Command{
 			return fmt.Errorf("fetching SNO kubeconfig: %w", err)
 		}
 
-		dest := snoKCDest
-		if dest == "" {
-			dest, err = defaultDestPath(envName, "sno-kubeconfig")
-			if err != nil {
-				return err
-			}
-		}
-
-		if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
-			return fmt.Errorf("creating destination directory: %w", err)
-		}
-
-		if err := os.WriteFile(dest, data, 0o600); err != nil {
-			return fmt.Errorf("writing kubeconfig: %w", err)
+		dest, err := saveKubeconfig(data, snoKCDest, envName, "sno-kubeconfig")
+		if err != nil {
+			return err
 		}
 
 		fmt.Printf("SNO kubeconfig saved to: %s\n", dest)

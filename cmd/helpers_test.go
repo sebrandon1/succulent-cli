@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -90,6 +92,45 @@ func TestResolveOwnerEmail(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSaveKubeconfig(t *testing.T) {
+	t.Run("with explicit dest", func(t *testing.T) {
+		dir := t.TempDir()
+		dest := filepath.Join(dir, "subdir", "kubeconfig")
+		content := []byte("apiVersion: v1\nkind: Config")
+
+		got, err := saveKubeconfig(content, dest, "myenv", "suffix")
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if got != dest {
+			t.Errorf("Expected dest %q, got %q", dest, got)
+		}
+
+		data, err := os.ReadFile(dest)
+		if err != nil {
+			t.Fatalf("Expected file to exist: %v", err)
+		}
+
+		if string(data) != string(content) {
+			t.Errorf("Expected content %q, got %q", content, data)
+		}
+	})
+
+	t.Run("with default dest", func(t *testing.T) {
+		got, err := saveKubeconfig([]byte("data"), "", "myenv", "test-kubeconfig")
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+
+		if !strings.HasSuffix(got, "Downloads/myenv-test-kubeconfig") {
+			t.Errorf("Expected path ending with Downloads/myenv-test-kubeconfig, got %s", got)
+		}
+
+		_ = os.Remove(got)
+	})
 }
 
 func TestConfigDir(t *testing.T) {
