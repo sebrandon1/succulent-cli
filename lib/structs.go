@@ -4,8 +4,9 @@ const (
 	StatusUp   = "up"
 	StatusDown = "down"
 
-	formFieldOwner  = "owner"
-	formFieldMailTo = "mail_to"
+	formFieldOwner     = "owner"
+	formFieldMailTo    = "mail_to"
+	formFieldMailToAlt = "mailto"
 
 	endpointRoot                 = "/"
 	endpointInfoPlan             = "/infoplan/%s"

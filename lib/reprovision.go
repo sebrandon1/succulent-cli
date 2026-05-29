@@ -9,10 +9,10 @@ func (c *Client) Reprovision(env string, req *ReprovisionRequest) error {
 	endpoint := fmt.Sprintf("%s"+endpointReprovision, c.BaseURL, env)
 
 	data := url.Values{
-		"mailto":       {req.Email},
-		formFieldOwner: {req.Owner},
-		"tag":          {req.Tag},
-		"version":      {req.Version},
+		formFieldMailToAlt: {req.Email},
+		formFieldOwner:     {req.Owner},
+		"tag":              {req.Tag},
+		"version":          {req.Version},
 	}
 
 	if req.OpenshiftImage != "" {
