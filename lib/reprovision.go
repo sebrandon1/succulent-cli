@@ -6,7 +6,7 @@ import (
 )
 
 func (c *Client) Reprovision(env string, req *ReprovisionRequest) error {
-	endpoint := fmt.Sprintf("%s/exposeform/%s", c.BaseURL, env)
+	endpoint := fmt.Sprintf("%s"+endpointReprovision, c.BaseURL, env)
 
 	data := url.Values{
 		"mailto":       {req.Email},

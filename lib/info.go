@@ -12,7 +12,7 @@ import (
 var ipRegex = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
 
 func (c *Client) GetInfoPlan(env string) (*ClusterInfo, error) {
-	requestURL := fmt.Sprintf("%s/infoplan/%s", c.BaseURL, env)
+	requestURL := fmt.Sprintf("%s"+endpointInfoPlan, c.BaseURL, env)
 
 	resp, err := c.getRaw(requestURL)
 	if err != nil {

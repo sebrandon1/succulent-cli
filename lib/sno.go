@@ -7,7 +7,7 @@ import (
 )
 
 func (c *Client) ProvisionSNO(env string, req *SNOProvisionRequest) error {
-	endpoint := fmt.Sprintf("%s/sno/%s", c.BaseURL, env)
+	endpoint := fmt.Sprintf("%s"+endpointSNOProvision, c.BaseURL, env)
 
 	data := url.Values{
 		formFieldOwner: {req.Owner},
@@ -38,7 +38,7 @@ func (c *Client) ProvisionSNO(env string, req *SNOProvisionRequest) error {
 }
 
 func (c *Client) GetSNOKubeconfig(env string) ([]byte, error) {
-	requestURL := fmt.Sprintf("%s/sno_kubeconfig/%s", c.BaseURL, env)
+	requestURL := fmt.Sprintf("%s"+endpointSNOKubeconfig, c.BaseURL, env)
 
 	resp, err := c.getRaw(requestURL)
 	if err != nil {
