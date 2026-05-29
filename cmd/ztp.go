@@ -7,7 +7,6 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -41,22 +40,9 @@ var ztpProvisionCmd = &cobra.Command{
 	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		owner := ztpOwner
-		if owner == "" {
-			owner = viper.GetString("default_owner")
-		}
-
-		email := ztpEmail
-		if email == "" {
-			email = viper.GetString("default_email")
-		}
-
-		if owner == "" {
-			return fmt.Errorf("--owner is required (or set default_owner in config)")
-		}
-
-		if email == "" {
-			return fmt.Errorf("--email is required (or set default_email in config)")
+		owner, email, err := resolveOwnerEmail(ztpOwner, ztpEmail)
+		if err != nil {
+			return err
 		}
 
 		req := lib.ZTPRequest{

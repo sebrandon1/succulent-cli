@@ -7,7 +7,6 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -27,22 +26,9 @@ var snoProvisionCmd = &cobra.Command{
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		owner := snoOwner
-		if owner == "" {
-			owner = viper.GetString("default_owner")
-		}
-
-		email := snoEmail
-		if email == "" {
-			email = viper.GetString("default_email")
-		}
-
-		if owner == "" {
-			return fmt.Errorf("--owner is required (or set default_owner in config)")
-		}
-
-		if email == "" {
-			return fmt.Errorf("--email is required (or set default_email in config)")
+		owner, email, err := resolveOwnerEmail(snoOwner, snoEmail)
+		if err != nil {
+			return err
 		}
 
 		req := lib.SNOProvisionRequest{
