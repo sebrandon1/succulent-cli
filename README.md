@@ -51,6 +51,18 @@ succulent-cli sno kubeconfig --env myenv
 # Fetch kubeconfig via SCP from installer node
 succulent-cli kubeconfig fetch --env myenv
 
+# List all available environments
+succulent-cli list
+
+# Watch provisioning until all nodes are up
+succulent-cli watch --env myenv
+
+# Provision a ZTP hub and spoke cluster
+succulent-cli ztp provision --env myenv --owner username --email user@example.com --sno-tag 4.17 --spoke-tag 4.17
+
+# Provision a Hypershift hosted cluster
+succulent-cli hypershift provision --env myenv --owner username --email user@example.com --sno-tag 4.17 --hcp-tag 4.17
+
 # Delete an environment
 succulent-cli delete --env myenv --confirm
 ```
@@ -59,13 +71,22 @@ succulent-cli delete --env myenv --confirm
 
 | Command | Description |
 |---------|-------------|
-| `get info` | Parse cluster VM info from the infoplan page and output as JSON |
+| `list` | List all available environments with status details |
+| `get info` | Parse cluster VM info from the infoplan page and output as JSON or table |
 | `get log` | Stream raw Ansible playbook log to stdout |
+| `watch` | Monitor provisioning until all nodes are up, then print installer IP |
 | `reprovision` | Submit an MNO cluster reprovisioning request |
 | `sno provision` | Submit an SNO cluster provisioning request |
 | `sno kubeconfig` | Download the SNO kubeconfig file |
+| `ztp provision` | Provision a ZTP hub and spoke cluster |
+| `ztp kubeconfig` | Download the ZTP management or spoke kubeconfig |
+| `hypershift provision` | Provision a Hypershift hosted cluster |
+| `hypershift kubeconfig` | Download the Hypershift management or hosted kubeconfig |
 | `kubeconfig fetch` | SCP the kubeconfig from the installer node |
 | `delete` | Delete an environment (requires `--confirm`) |
+| `config init` | Create a default config file |
+| `config show` | Show the resolved configuration |
+| `config path` | Print the config file path |
 
 ## Global Flags
 
@@ -90,6 +111,22 @@ succulent-cli delete --env myenv --confirm
 | `--end-date` | — | End date for the environment |
 | `--kcli-params` | — | Additional kcli parameters (key:value format) |
 
+## List Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--output`, `-o` | `table` | Output format (`json` or `table`) |
+| `--no-detail` | `false` | Skip fetching per-environment info (fast mode) |
+| `--no-cache` | `false` | Bypass the info cache |
+| `--concurrency` | `10` | Number of parallel info fetches |
+
+## Watch Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--max-wait` | `60` | Maximum minutes to wait |
+| `--poll-interval` | `30` | Seconds between status checks |
+
 ## SNO Provision Flags
 
 | Flag | Default | Description |
@@ -100,6 +137,47 @@ succulent-cli delete --env myenv --confirm
 | `--release-type` | `nightly` | Release type (nightly, ci) |
 | `--full-ocp-tag` | — | Full OCP tag (e.g. 4.14.0-0.nightly-2023-12-14-072431) |
 | `--full-image` | — | Full image name for installation |
+
+## ZTP Provision Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--owner` | — | Username (required) |
+| `--email` | — | Email address (required) |
+| `--sno-tag` | — | Hub (SNO) cluster OCP tag (e.g. 4.17) |
+| `--sno-release` | `nightly` | Hub cluster release type |
+| `--sno-full-tag` | — | Hub cluster full OCP tag |
+| `--spoke-tag` | — | Spoke cluster OCP tag (e.g. 4.17) |
+| `--spoke-release` | `nightly` | Spoke cluster release type |
+| `--spoke-full-tag` | — | Spoke cluster full OCP tag |
+| `--type` | `sno` | ZTP type: `sno` or `mno` |
+| `--stop-before-deployment` | `false` | Stop before spoke deployment for manual GitOps changes |
+| `--vm-masters` | `3` | Number of VM masters (MNO only) |
+| `--bm-masters` | — | Comma-separated baremetal master hosts (MNO only) |
+| `--bm-workers` | — | Comma-separated baremetal worker hosts |
+| `--vm-workers` | `1` | Number of VM workers |
+
+## ZTP / Hypershift Kubeconfig Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--choice` | — | Kubeconfig type (required): `management`, `spoke`, or `hosted` |
+| `--dest` | `~/Downloads/{env}-{type}-kubeconfig` | Local destination path |
+
+## Hypershift Provision Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--owner` | — | Username (required) |
+| `--email` | — | Email address (required) |
+| `--sno-tag` | — | Management cluster OCP tag (e.g. 4.17) |
+| `--sno-release` | `nightly` | Management cluster release type |
+| `--sno-full-tag` | — | Management cluster full OCP tag |
+| `--hcp-tag` | — | Hosted cluster OCP tag (e.g. 4.17) |
+| `--hcp-release` | `nightly` | Hosted cluster release type |
+| `--hcp-full-tag` | — | Hosted cluster full OCP tag |
+| `--vm-workers` | `0` | Number of VM workers for hosted cluster |
+| `--image-override` | — | Hypershift operator image override |
 
 ## Kubeconfig Fetch Flags
 
