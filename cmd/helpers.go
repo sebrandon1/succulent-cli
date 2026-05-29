@@ -40,6 +40,27 @@ func resolveOwnerEmail(owner, email string) (string, string, error) {
 	return owner, email, nil
 }
 
+func saveKubeconfig(data []byte, dest, env, suffix string) (string, error) {
+	if dest == "" {
+		d, err := defaultDestPath(env, suffix)
+		if err != nil {
+			return "", err
+		}
+
+		dest = d
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {
+		return "", fmt.Errorf("creating destination directory: %w", err)
+	}
+
+	if err := os.WriteFile(dest, data, 0o600); err != nil {
+		return "", fmt.Errorf("writing kubeconfig: %w", err)
+	}
+
+	return dest, nil
+}
+
 func defaultDestPath(env, suffix string) (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
