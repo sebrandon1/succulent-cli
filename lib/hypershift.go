@@ -7,7 +7,7 @@ import (
 )
 
 func (c *Client) ProvisionHypershift(env string, req *HypershiftRequest) error {
-	endpoint := fmt.Sprintf("%s/create_hypershift", c.BaseURL)
+	endpoint := c.BaseURL + endpointHypershiftProvision
 
 	data := url.Values{
 		"plan":          {env},
@@ -55,7 +55,7 @@ func (c *Client) ProvisionHypershift(env string, req *HypershiftRequest) error {
 }
 
 func (c *Client) GetHypershiftKubeconfig(env, choice string) ([]byte, error) {
-	endpoint := fmt.Sprintf("%s/hypershift_kubeconfig", c.BaseURL)
+	endpoint := c.BaseURL + endpointHypershiftKubeconfig
 
 	data := url.Values{
 		"plan_name": {env},

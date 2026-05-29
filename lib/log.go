@@ -6,7 +6,7 @@ import (
 )
 
 func (c *Client) StreamLog(env string, w io.Writer) error {
-	requestURL := fmt.Sprintf("%s/ztp_log/%s", c.BaseURL, env)
+	requestURL := fmt.Sprintf("%s"+endpointLog, c.BaseURL, env)
 
 	resp, err := c.getRaw(requestURL)
 	if err != nil {

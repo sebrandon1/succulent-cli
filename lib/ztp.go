@@ -7,7 +7,7 @@ import (
 )
 
 func (c *Client) ProvisionZTP(env string, req *ZTPRequest) error {
-	endpoint := fmt.Sprintf("%s/create_ztp", c.BaseURL)
+	endpoint := c.BaseURL + endpointZTPProvision
 
 	data := url.Values{
 		"plan":          {env},
@@ -71,7 +71,7 @@ func (c *Client) ProvisionZTP(env string, req *ZTPRequest) error {
 }
 
 func (c *Client) GetZTPKubeconfig(env, choice string) ([]byte, error) {
-	endpoint := fmt.Sprintf("%s/ztp_kubeconfig", c.BaseURL)
+	endpoint := c.BaseURL + endpointZTPKubeconfig
 
 	data := url.Values{
 		"plan_name": {env},

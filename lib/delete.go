@@ -6,7 +6,7 @@ import (
 )
 
 func (c *Client) DeleteEnvironment(env string) error {
-	endpoint := fmt.Sprintf("%s/exposedelete", c.BaseURL)
+	endpoint := c.BaseURL + endpointDelete
 
 	data := url.Values{
 		"plan": {env},

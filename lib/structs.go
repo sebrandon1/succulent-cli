@@ -6,6 +6,18 @@ const (
 
 	formFieldOwner  = "owner"
 	formFieldMailTo = "mail_to"
+
+	endpointRoot                 = "/"
+	endpointInfoPlan             = "/infoplan/%s"
+	endpointLog                  = "/ztp_log/%s"
+	endpointReprovision          = "/exposeform/%s"
+	endpointDelete               = "/exposedelete"
+	endpointSNOProvision         = "/sno/%s"
+	endpointSNOKubeconfig        = "/sno_kubeconfig/%s"
+	endpointZTPProvision         = "/create_ztp"
+	endpointZTPKubeconfig        = "/ztp_kubeconfig"
+	endpointHypershiftProvision  = "/create_hypershift"
+	endpointHypershiftKubeconfig = "/hypershift_kubeconfig"
 )
 
 // NodeInfo represents a single VM/node from the infoplan page.
