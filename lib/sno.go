@@ -10,8 +10,8 @@ func (c *Client) ProvisionSNO(env string, req *SNOProvisionRequest) error {
 	endpoint := fmt.Sprintf("%s"+endpointSNOProvision, c.BaseURL, env)
 
 	data := url.Values{
-		formFieldOwner: {req.Owner},
-		"mailto":       {req.Email},
+		formFieldOwner:     {req.Owner},
+		formFieldMailToAlt: {req.Email},
 	}
 
 	if req.OCPTag != "" {
