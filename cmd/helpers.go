@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/viper"
 )
 
 func printJSON(data interface{}) error {
@@ -16,6 +18,26 @@ func printJSON(data interface{}) error {
 	fmt.Println(string(output))
 
 	return nil
+}
+
+func resolveOwnerEmail(owner, email string) (string, string, error) {
+	if owner == "" {
+		owner = viper.GetString("default_owner")
+	}
+
+	if email == "" {
+		email = viper.GetString("default_email")
+	}
+
+	if owner == "" {
+		return "", "", fmt.Errorf("--owner is required (or set default_owner in config)")
+	}
+
+	if email == "" {
+		return "", "", fmt.Errorf("--email is required (or set default_email in config)")
+	}
+
+	return owner, email, nil
 }
 
 func defaultDestPath(env, suffix string) (string, error) {

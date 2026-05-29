@@ -5,7 +5,6 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -28,22 +27,9 @@ var reprovisionCmd = &cobra.Command{
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.17
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.18 --version ci`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		email := reprovEmail
-		if email == "" {
-			email = viper.GetString("default_email")
-		}
-
-		owner := reprovOwner
-		if owner == "" {
-			owner = viper.GetString("default_owner")
-		}
-
-		if email == "" {
-			return fmt.Errorf("--email is required (or set default_email in config)")
-		}
-
-		if owner == "" {
-			return fmt.Errorf("--owner is required (or set default_owner in config)")
+		owner, email, err := resolveOwnerEmail(reprovOwner, reprovEmail)
+		if err != nil {
+			return err
 		}
 
 		req := lib.ReprovisionRequest{

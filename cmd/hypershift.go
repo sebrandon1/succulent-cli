@@ -7,7 +7,6 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 var (
@@ -37,22 +36,9 @@ var hsProvisionCmd = &cobra.Command{
 	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		owner := hsOwner
-		if owner == "" {
-			owner = viper.GetString("default_owner")
-		}
-
-		email := hsEmail
-		if email == "" {
-			email = viper.GetString("default_email")
-		}
-
-		if owner == "" {
-			return fmt.Errorf("--owner is required (or set default_owner in config)")
-		}
-
-		if email == "" {
-			return fmt.Errorf("--email is required (or set default_email in config)")
+		owner, email, err := resolveOwnerEmail(hsOwner, hsEmail)
+		if err != nil {
+			return err
 		}
 
 		req := lib.HypershiftRequest{
