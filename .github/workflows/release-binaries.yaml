@@ -32,3 +32,44 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: succulent-cli_*.tar.gz
+
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ${{ github.ref_name }} --repo ${{ github.repository }} --pattern "succulent-cli_*.tar.gz"
+      - name: Generate checksums
+        run: sha256sum succulent-cli_*.tar.gz > checksums.sha256
+      - name: Upload checksums
+        uses: softprops/action-gh-release@v3
+        with:
+          files: checksums.sha256
+
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Generate and append changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${{ github.ref_name }}$" | head -1)
+          if [ -z "$PREV_TAG" ]; then
+            echo "No previous tag found, skipping changelog"
+            exit 0
+          fi
+          CHANGELOG=$(git log "${PREV_TAG}..HEAD" --pretty="- %s (%h)" --no-merges)
+          if [ -z "$CHANGELOG" ]; then
+            echo "No changes found"
+            exit 0
+          fi
+          BODY=$(gh release view "${{ github.ref_name }}" --json body -q .body)
+          gh release edit "${{ github.ref_name }}" --notes "${BODY}
+
+          ## Changes since ${PREV_TAG}
+          ${CHANGELOG}"
