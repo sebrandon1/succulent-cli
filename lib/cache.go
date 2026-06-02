@@ -84,7 +84,9 @@ func (c *Cache) SetInfo(env string, info *ClusterInfo) {
 		FetchedAt: time.Now(),
 	}
 
-	_ = c.save(cf)
+	if err := c.save(cf); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: cache save failed: %v\n", err)
+	}
 }
 
 func (c *Cache) SetMultipleInfo(entries map[string]*ClusterInfo) {
@@ -99,7 +101,9 @@ func (c *Cache) SetMultipleInfo(entries map[string]*ClusterInfo) {
 		}
 	}
 
-	_ = c.save(cf)
+	if err := c.save(cf); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: cache save failed: %v\n", err)
+	}
 }
 
 func (c *Cache) Clear() error {

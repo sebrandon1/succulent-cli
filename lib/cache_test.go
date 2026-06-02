@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 )
@@ -113,4 +115,25 @@ func TestCacheEmptyDir(t *testing.T) {
 	if ok {
 		t.Fatal("Expected cache miss on empty cache dir")
 	}
+}
+
+func TestCacheSaveFailureLogsWarning(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "readonly")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := NewCache(dir, 60*time.Second)
+	cache.SetInfo("testenv", &ClusterInfo{Environment: "testenv"})
+
+	if err := os.Chmod(dir, 0o444); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() { os.Chmod(dir, 0o750) })
+
+	cache.SetInfo("testenv2", &ClusterInfo{Environment: "testenv2"})
+	cache.SetMultipleInfo(map[string]*ClusterInfo{
+		"testenv3": {Environment: "testenv3"},
+	})
 }
