@@ -22,9 +22,11 @@ var deleteCmd = &cobra.Command{
 			return fmt.Errorf("deleting environment: %w", err)
 		}
 
-		fmt.Printf("Environment %s deleted successfully\n", envName)
-
-		return nil
+		return printResult(CommandResult{
+			Status:      "deleted",
+			Environment: envName,
+			Message:     fmt.Sprintf("Environment %s deleted successfully", envName),
+		}, outputFormat)
 	},
 }
 

@@ -9,6 +9,12 @@ import (
 	"github.com/spf13/viper"
 )
 
+type CommandResult struct {
+	Status      string `json:"status"`
+	Environment string `json:"environment"`
+	Message     string `json:"message"`
+}
+
 func printJSON(data interface{}) error {
 	output, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -16,6 +22,16 @@ func printJSON(data interface{}) error {
 	}
 
 	fmt.Println(string(output))
+
+	return nil
+}
+
+func printResult(result CommandResult, format string) error {
+	if format == "json" {
+		return printJSON(result)
+	}
+
+	fmt.Println(result.Message)
 
 	return nil
 }

@@ -9,10 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	outputFormat string
-	infoNoCache  bool
-)
+var infoNoCache bool
 
 var infoCmd = &cobra.Command{
 	Use:   "info",
@@ -91,6 +88,5 @@ func printInfoTable(info *lib.ClusterInfo) {
 }
 
 func init() {
-	infoCmd.Flags().StringVarP(&outputFormat, "output", "o", "json", "Output format (json or table)")
 	infoCmd.Flags().BoolVar(&infoNoCache, "no-cache", false, "Bypass the info cache")
 }

@@ -61,9 +61,11 @@ var hsProvisionCmd = &cobra.Command{
 			return fmt.Errorf("submitting Hypershift provision request: %w", err)
 		}
 
-		fmt.Printf("Hypershift provision request submitted for %s\n", envName)
-
-		return nil
+		return printResult(CommandResult{
+			Status:      "submitted",
+			Environment: envName,
+			Message:     fmt.Sprintf("Hypershift provision request submitted for %s", envName),
+		}, outputFormat)
 	},
 }
 

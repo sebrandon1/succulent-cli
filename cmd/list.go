@@ -12,12 +12,11 @@ import (
 )
 
 var (
-	listOutputFormat string
-	listNoDetail     bool
-	listNoCache      bool
-	listConcurrency  int
-	listSortBy       string
-	listFilter       string
+	listNoDetail    bool
+	listNoCache     bool
+	listConcurrency int
+	listSortBy      string
+	listFilter      string
 )
 
 var listCmd = &cobra.Command{
@@ -43,7 +42,7 @@ func listBasic() error {
 		return fmt.Errorf("listing environments: %w", err)
 	}
 
-	if listOutputFormat == "json" {
+	if outputFormat == "json" {
 		return printJSON(envs)
 	}
 
@@ -84,7 +83,7 @@ func listDetailed() error {
 
 	sortDetails(details, listSortBy)
 
-	if listOutputFormat == "json" {
+	if outputFormat == "json" {
 		return printJSON(details)
 	}
 
@@ -166,7 +165,6 @@ func sortDetails(details []lib.EnvironmentDetail, sortBy string) {
 }
 
 func init() {
-	listCmd.Flags().StringVarP(&listOutputFormat, "output", "o", "table", "Output format (json or table)")
 	listCmd.Flags().BoolVar(&listNoDetail, "no-detail", false, "Skip fetching per-environment info (fast mode)")
 	listCmd.Flags().BoolVar(&listNoCache, "no-cache", false, "Bypass the info cache")
 	listCmd.Flags().IntVar(&listConcurrency, "concurrency", 10, "Number of parallel info fetches")

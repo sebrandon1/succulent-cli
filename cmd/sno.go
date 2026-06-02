@@ -47,9 +47,11 @@ var snoProvisionCmd = &cobra.Command{
 			return fmt.Errorf("submitting SNO provision request: %w", err)
 		}
 
-		fmt.Printf("SNO provision request submitted for %s\n", envName)
-
-		return nil
+		return printResult(CommandResult{
+			Status:      "submitted",
+			Environment: envName,
+			Message:     fmt.Sprintf("SNO provision request submitted for %s", envName),
+		}, outputFormat)
 	},
 }
 

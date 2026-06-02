@@ -69,9 +69,11 @@ var ztpProvisionCmd = &cobra.Command{
 			return fmt.Errorf("submitting ZTP provision request: %w", err)
 		}
 
-		fmt.Printf("ZTP provision request submitted for %s (type: %s)\n", envName, ztpType)
-
-		return nil
+		return printResult(CommandResult{
+			Status:      "submitted",
+			Environment: envName,
+			Message:     fmt.Sprintf("ZTP provision request submitted for %s (type: %s)", envName, ztpType),
+		}, outputFormat)
 	},
 }
 

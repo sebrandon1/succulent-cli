@@ -54,9 +54,11 @@ var reprovisionCmd = &cobra.Command{
 			return fmt.Errorf("submitting reprovision request: %w", err)
 		}
 
-		fmt.Printf("Reprovision request submitted for %s (OCP %s %s)\n", envName, reprovTag, reprovVersion)
-
-		return nil
+		return printResult(CommandResult{
+			Status:      "submitted",
+			Environment: envName,
+			Message:     fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", envName, reprovTag, reprovVersion),
+		}, outputFormat)
 	},
 }
 
