@@ -40,7 +40,7 @@ func TestProvisionHypershift(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &HypershiftRequest{
 		Owner:      "testuser",
@@ -63,7 +63,7 @@ func TestProvisionHypershiftError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &HypershiftRequest{Owner: "testuser", Email: "test@example.com"}
 
@@ -101,7 +101,7 @@ func TestGetHypershiftKubeconfig(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	data, err := client.GetHypershiftKubeconfig(testEnv, "management")
 	if err != nil {
@@ -120,7 +120,7 @@ func TestGetHypershiftKubeconfigError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	_, err := client.GetHypershiftKubeconfig(testEnv, "management")
 	if err == nil {
@@ -154,7 +154,7 @@ func TestProvisionHypershiftAllFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &HypershiftRequest{
 		Owner:          "testuser",

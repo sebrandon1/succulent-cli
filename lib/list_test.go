@@ -47,7 +47,7 @@ func TestListEnvironments(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	envs, err := client.ListEnvironments()
 	if err != nil {
@@ -89,7 +89,7 @@ func TestListEnvironmentsNoDuplicates(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	envs, err := client.ListEnvironments()
 	if err != nil {
@@ -108,7 +108,7 @@ func TestListEnvironmentsEmpty(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	envs, err := client.ListEnvironments()
 	if err != nil {
@@ -127,7 +127,7 @@ func TestListEnvironmentsServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	_, err := client.ListEnvironments()
 	if err == nil {
@@ -208,7 +208,7 @@ func TestListEnvironmentsWithInfo(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	details, err := client.ListEnvironmentsWithInfo(5, nil)
 	if err != nil {

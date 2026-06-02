@@ -32,7 +32,7 @@ func TestProvisionSNO(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &SNOProvisionRequest{
 		Owner:       "testuser",
@@ -59,7 +59,7 @@ func TestGetSNOKubeconfig(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	data, err := client.GetSNOKubeconfig(testEnv)
 	if err != nil {
@@ -78,7 +78,7 @@ func TestProvisionSNOError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &SNOProvisionRequest{
 		Owner: "testuser",
@@ -97,7 +97,7 @@ func TestGetSNOKubeconfigError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	_, err := client.GetSNOKubeconfig(testEnv)
 	if err == nil {
@@ -123,7 +123,7 @@ func TestProvisionSNOWithFullTag(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &SNOProvisionRequest{
 		Owner:      "testuser",

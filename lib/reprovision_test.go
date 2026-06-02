@@ -40,7 +40,7 @@ func TestReprovision(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ReprovisionRequest{
 		Email:   "test@example.com",
@@ -76,7 +76,7 @@ func TestReprovisionWithOptionalFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ReprovisionRequest{
 		Email:             "test@example.com",
@@ -100,7 +100,7 @@ func TestReprovisionError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ReprovisionRequest{
 		Email:   "test@example.com",
@@ -136,7 +136,7 @@ func TestReprovisionAllOptionalFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ReprovisionRequest{
 		Email:             "test@example.com",

@@ -29,7 +29,7 @@ func TestGetInfoPlan(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	info, err := client.GetInfoPlan(testEnv)
 	if err != nil {
@@ -79,7 +79,7 @@ func TestGetInfoPlanNoInstaller(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	info, err := client.GetInfoPlan(testEnv)
 	if err != nil {
@@ -104,7 +104,7 @@ func TestGetInfoPlanEmptyTable(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	info, err := client.GetInfoPlan(testEnv)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestGetInfoPlanMinimalHTML(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	info, err := client.GetInfoPlan(testEnv)
 	if err != nil {
@@ -148,7 +148,7 @@ func TestGetInfoPlanServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	_, err := client.GetInfoPlan(testEnv)
 	if err == nil {
@@ -170,7 +170,7 @@ func TestGetInfoPlanMultipleIPs(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	info, err := client.GetInfoPlan(testEnv)
 	if err != nil {
@@ -197,7 +197,7 @@ func TestGetInfoPlanSingleCellRow(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	info, err := client.GetInfoPlan(testEnv)
 	if err != nil {

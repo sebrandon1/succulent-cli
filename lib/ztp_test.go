@@ -36,7 +36,7 @@ func TestProvisionZTP(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ZTPRequest{
 		Owner:      "testuser",
@@ -75,7 +75,7 @@ func TestProvisionZTPMNO(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ZTPRequest{
 		Owner:          "testuser",
@@ -101,7 +101,7 @@ func TestProvisionZTPError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ZTPRequest{Owner: "testuser", Email: "test@example.com"}
 
@@ -131,7 +131,7 @@ func TestGetZTPKubeconfig(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	data, err := client.GetZTPKubeconfig(testEnv, "spoke")
 	if err != nil {
@@ -150,7 +150,7 @@ func TestGetZTPKubeconfigError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	_, err := client.GetZTPKubeconfig(testEnv, "management")
 	if err == nil {
@@ -188,7 +188,7 @@ func TestProvisionZTPAllFields(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	req := &ZTPRequest{
 		Owner:                "testuser",
