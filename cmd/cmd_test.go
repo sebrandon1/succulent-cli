@@ -173,7 +173,7 @@ func TestReprovisionCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()
 
-	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--tag", "4.17", "--confirm"})
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--ocp-tag", "4.17", "--confirm"})
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
@@ -185,7 +185,7 @@ func TestReprovisionCommandNoConfirm(t *testing.T) {
 	defer cleanup()
 
 	confirmReprovision = false
-	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--tag", "4.17"})
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--ocp-tag", "4.17"})
 
 	if err := rootCmd.Execute(); err == nil {
 		t.Fatal("Expected error without --confirm, got nil")
