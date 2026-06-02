@@ -3,13 +3,26 @@ package lib
 import (
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
 )
 
+func validateIP(ip string) error {
+	if net.ParseIP(ip) == nil {
+		return fmt.Errorf("invalid IP address: %q", ip)
+	}
+
+	return nil
+}
+
 func RemoveSSHHostKey(ip string) error {
+	if err := validateIP(ip); err != nil {
+		return err
+	}
+
 	cmd := exec.Command("ssh-keygen", "-R", ip) //nolint:gosec
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -22,6 +35,10 @@ func RemoveSSHHostKey(ip string) error {
 }
 
 func FetchKubeconfig(ip, user, remotePath, destPath string) error {
+	if err := validateIP(ip); err != nil {
+		return err
+	}
+
 	destDir := filepath.Dir(destPath)
 	if err := os.MkdirAll(destDir, 0o750); err != nil {
 		return fmt.Errorf("failed to create destination directory: %w", err)
