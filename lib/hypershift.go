@@ -9,43 +9,8 @@ import (
 func (c *Client) ProvisionHypershift(env string, req *HypershiftRequest) error {
 	endpoint := c.BaseURL + endpointHypershiftProvision
 
-	data := url.Values{
-		"plan":          {env},
-		formFieldOwner:  {req.Owner},
-		formFieldMailTo: {req.Email},
-	}
-
-	if req.SNOTag != "" {
-		data.Set("sno_tag", req.SNOTag)
-	}
-
-	if req.SNORelease != "" {
-		data.Set("sno_release", req.SNORelease)
-	}
-
-	if req.SNOFullTag != "" {
-		data.Set("sno_full_tag", req.SNOFullTag)
-	}
-
-	if req.HCPTag != "" {
-		data.Set("hcp_tag", req.HCPTag)
-	}
-
-	if req.HCPRelease != "" {
-		data.Set("hcp_release", req.HCPRelease)
-	}
-
-	if req.HCPFullTag != "" {
-		data.Set("hcp_full_tag", req.HCPFullTag)
-	}
-
-	if req.VMWorkersCount != "" {
-		data.Set("vm-workers-count", req.VMWorkersCount)
-	}
-
-	if req.ImageOverride != "" {
-		data.Set("image_override", req.ImageOverride)
-	}
+	data := req.FormValues()
+	data.Set("plan", env)
 
 	if err := c.postForm(endpoint, data); err != nil {
 		return fmt.Errorf("failed to provision Hypershift on %s: %w", env, err)

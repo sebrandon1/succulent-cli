@@ -3,34 +3,12 @@ package lib
 import (
 	"fmt"
 	"io"
-	"net/url"
 )
 
 func (c *Client) ProvisionSNO(env string, req *SNOProvisionRequest) error {
 	endpoint := fmt.Sprintf("%s"+endpointSNOProvision, c.BaseURL, env)
 
-	data := url.Values{
-		formFieldOwner:     {req.Owner},
-		formFieldMailToAlt: {req.Email},
-	}
-
-	if req.OCPTag != "" {
-		data.Set("ocp_tag", req.OCPTag)
-	}
-
-	if req.ReleaseType != "" {
-		data.Set("ocp_release_type", req.ReleaseType)
-	}
-
-	if req.FullOCPTag != "" {
-		data.Set("full_ocp_tag", req.FullOCPTag)
-	}
-
-	if req.FullImageName != "" {
-		data.Set("full_image_name", req.FullImageName)
-	}
-
-	if err := c.postForm(endpoint, data); err != nil {
+	if err := c.postForm(endpoint, req.FormValues()); err != nil {
 		return fmt.Errorf("failed to provision SNO on %s: %w", env, err)
 	}
 
