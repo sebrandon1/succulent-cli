@@ -3,12 +3,14 @@ package lib
 import (
 	"crypto/rand"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"io"
 	"math/big"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -22,15 +24,35 @@ type Client struct {
 	RetryBaseDelay time.Duration
 }
 
-func NewClient(baseURL string, insecureSkipVerify bool) *Client {
+func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Client, error) {
+	tlsConfig := &tls.Config{
+		InsecureSkipVerify: insecureSkipVerify, //nolint:gosec
+	}
+
+	if caCertPath != "" {
+		caCert, err := os.ReadFile(caCertPath) //nolint:gosec
+		if err != nil {
+			return nil, fmt.Errorf("reading CA certificate: %w", err)
+		}
+
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			pool = x509.NewCertPool()
+		}
+
+		if !pool.AppendCertsFromPEM(caCert) {
+			return nil, fmt.Errorf("failed to parse CA certificate from %s", caCertPath)
+		}
+
+		tlsConfig.RootCAs = pool
+	}
+
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout: 10 * time.Second,
 		}).DialContext,
 		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: insecureSkipVerify, //nolint:gosec
-		},
+		TLSClientConfig:     tlsConfig,
 	}
 
 	return &Client{
@@ -41,7 +63,7 @@ func NewClient(baseURL string, insecureSkipVerify bool) *Client {
 		},
 		MaxRetries:     3,
 		RetryBaseDelay: 1 * time.Second,
-	}
+	}, nil
 }
 
 func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {

@@ -3,12 +3,17 @@ package lib
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 )
 
 func TestNewClient(t *testing.T) {
-	client := NewClient("https://example.com", true)
+	client, err := NewClient("https://example.com", true, "")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 
 	if client.BaseURL != "https://example.com" {
 		t.Errorf("Expected BaseURL https://example.com, got %s", client.BaseURL)
@@ -24,10 +29,32 @@ func TestNewClient(t *testing.T) {
 }
 
 func TestNewClientWithVerifySSL(t *testing.T) {
-	client := NewClient("https://example.com", false)
+	client, err := NewClient("https://example.com", false, "")
+	if err != nil {
+		t.Fatalf("NewClient failed: %v", err)
+	}
 
 	if client.BaseURL != "https://example.com" {
 		t.Errorf("Expected BaseURL https://example.com, got %s", client.BaseURL)
+	}
+}
+
+func TestNewClientWithInvalidCACert(t *testing.T) {
+	_, err := NewClient("https://example.com", false, "/nonexistent/ca.pem")
+	if err == nil {
+		t.Fatal("Expected error for nonexistent CA cert, got nil")
+	}
+}
+
+func TestNewClientWithBadCACert(t *testing.T) {
+	badCert := filepath.Join(t.TempDir(), "bad-ca.pem")
+	if err := os.WriteFile(badCert, []byte("not a real certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := NewClient("https://example.com", false, badCert)
+	if err == nil {
+		t.Fatal("Expected error for invalid PEM content, got nil")
 	}
 }
 

@@ -51,7 +51,7 @@ jobs:
       - name: Run gosec
         uses: securego/gosec@master
         with:
-          args: -exclude=G204,G301,G104,G402 ./...
+          args: -exclude=G204,G301,G104,G304,G402 ./...
 
   vulncheck:
     runs-on: ubuntu-latest

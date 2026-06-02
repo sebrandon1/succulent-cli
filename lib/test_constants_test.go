@@ -8,7 +8,7 @@ const (
 )
 
 func newTestClient(baseURL string) *Client {
-	c := NewClient(baseURL, true)
+	c, _ := NewClient(baseURL, true, "")
 	c.RetryBaseDelay = time.Millisecond
 
 	return c
