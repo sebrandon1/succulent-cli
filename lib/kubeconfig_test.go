@@ -5,8 +5,58 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
+
+func TestValidateIP(t *testing.T) {
+	tests := []struct {
+		name    string
+		ip      string
+		wantErr bool
+	}{
+		{"valid IPv4", "192.168.1.100", false},
+		{"valid IPv6", "::1", false},
+		{"valid IPv6 full", "2001:db8::1", false},
+		{"empty string", "", true},
+		{"invalid octets", "999.999.999.999", true},
+		{"shell metacharacters", "192.168.1.1; rm -rf /", true},
+		{"command injection", "$(whoami)", true},
+		{"hostname not IP", "example.com", true},
+		{"partial IP", "192.168", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validateIP(tt.ip)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateIP(%q) error = %v, wantErr %v", tt.ip, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRemoveSSHHostKeyInvalidIP(t *testing.T) {
+	err := RemoveSSHHostKey("not-an-ip")
+	if err == nil {
+		t.Fatal("Expected error for invalid IP")
+	}
+
+	if !strings.Contains(err.Error(), "invalid IP address") {
+		t.Errorf("Expected 'invalid IP address' error, got: %v", err)
+	}
+}
+
+func TestFetchKubeconfigInvalidIP(t *testing.T) {
+	err := FetchKubeconfig("not-an-ip", "root", "/path", "/dest")
+	if err == nil {
+		t.Fatal("Expected error for invalid IP")
+	}
+
+	if !strings.Contains(err.Error(), "invalid IP address") {
+		t.Errorf("Expected 'invalid IP address' error, got: %v", err)
+	}
+}
 
 func TestWaitForClusterReadyAllUp(t *testing.T) {
 	html := fmt.Sprintf(`<html><body><table>
