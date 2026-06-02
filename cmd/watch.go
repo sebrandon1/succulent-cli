@@ -18,14 +18,16 @@ var watchCmd = &cobra.Command{
 			return fmt.Errorf("--poll-interval must be at least %d seconds", minPollIntervalSecs)
 		}
 
-		ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stdout)
+		ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stderr)
 		if err != nil {
 			return fmt.Errorf("watching cluster: %w", err)
 		}
 
-		fmt.Printf("\nInstaller IP: %s\n", ip)
-
-		return nil
+		return printResult(CommandResult{
+			Status:      "ready",
+			Environment: envName,
+			Message:     fmt.Sprintf("\nInstaller IP: %s", ip),
+		}, outputFormat)
 	},
 }
 

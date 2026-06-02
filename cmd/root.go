@@ -16,6 +16,7 @@ var (
 	succulentURL     string
 	envName          string
 	verifySSL        bool
+	outputFormat     string
 	sharedClient     *lib.Client
 	sharedCache      *lib.Cache
 	maxWaitMinutes   int
@@ -126,6 +127,8 @@ func init() {
 		"Environment name (e.g., env1, env2)")
 	rootCmd.PersistentFlags().BoolVar(&verifySSL, "verify-ssl", false,
 		"Enable SSL certificate verification")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table",
+		"Output format (json or table)")
 
 	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
 	_ = viper.BindPFlag("env", rootCmd.PersistentFlags().Lookup("env"))
