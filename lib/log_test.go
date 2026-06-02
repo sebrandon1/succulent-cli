@@ -21,7 +21,7 @@ func TestStreamLog(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	var buf bytes.Buffer
 	if err := client.StreamLog(testEnv, &buf); err != nil {
@@ -40,7 +40,7 @@ func TestStreamLogError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	var buf bytes.Buffer
 	if err := client.StreamLog(testEnv, &buf); err == nil {

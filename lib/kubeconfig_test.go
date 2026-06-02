@@ -73,7 +73,7 @@ func TestWaitForClusterReadyAllUp(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
 	if err != nil {
@@ -110,7 +110,7 @@ func TestWaitForClusterReadyEventuallyUp(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
 	if err != nil {
@@ -140,7 +140,7 @@ func TestWaitForClusterReadyNoInstallerIP(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	// Short timeout so test doesn't hang — no installer IP means it times out
 	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard)
@@ -156,7 +156,7 @@ func TestWaitForClusterReadyServerError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard)
 	if err == nil {
@@ -192,7 +192,7 @@ func TestWaitForClusterReadyPartialUp(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := NewClient(server.URL, true)
+	client := newTestClient(server.URL)
 
 	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
 	if err != nil {
