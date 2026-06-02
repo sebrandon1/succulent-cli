@@ -173,10 +173,22 @@ func TestReprovisionCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()
 
-	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--tag", "4.17"})
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--tag", "4.17", "--confirm"})
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestReprovisionCommandNoConfirm(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	confirmReprovision = false
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--tag", "4.17"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error without --confirm, got nil")
 	}
 }
 
@@ -184,10 +196,22 @@ func TestSNOProvisionCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()
 
-	rootCmd.SetArgs([]string{"sno", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--ocp-tag", "4.17"})
+	rootCmd.SetArgs([]string{"sno", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--ocp-tag", "4.17", "--confirm"})
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestSNOProvisionCommandNoConfirm(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	confirmSNO = false
+	rootCmd.SetArgs([]string{"sno", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--ocp-tag", "4.17"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error without --confirm, got nil")
 	}
 }
 
@@ -214,10 +238,22 @@ func TestHypershiftProvisionCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()
 
-	rootCmd.SetArgs([]string{"hypershift", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--hcp-tag", "4.17"})
+	rootCmd.SetArgs([]string{"hypershift", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--hcp-tag", "4.17", "--confirm"})
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestHypershiftProvisionCommandNoConfirm(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	confirmHS = false
+	rootCmd.SetArgs([]string{"hypershift", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--hcp-tag", "4.17"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error without --confirm, got nil")
 	}
 }
 
@@ -240,10 +276,22 @@ func TestZTPProvisionCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()
 
-	rootCmd.SetArgs([]string{"ztp", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--spoke-tag", "4.17"})
+	rootCmd.SetArgs([]string{"ztp", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--spoke-tag", "4.17", "--confirm"})
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
+func TestZTPProvisionCommandNoConfirm(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	confirmZTP = false
+	rootCmd.SetArgs([]string{"ztp", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--spoke-tag", "4.17"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error without --confirm, got nil")
 	}
 }
 
