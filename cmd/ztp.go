@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	confirmZTP      bool
 	ztpOwner        string
 	ztpEmail        string
 	ztpSNOTag       string
@@ -35,9 +36,13 @@ var ztpProvisionCmd = &cobra.Command{
 	Use:   cmdNameProvision,
 	Short: "Provision a ZTP hub and spoke cluster",
 	Long:  `Submit a ZTP provisioning request for the specified environment.`,
-	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17
-  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3`,
+	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
+  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm`,
 	RunE: func(_ *cobra.Command, _ []string) error {
+		if !confirmZTP {
+			return fmt.Errorf("--confirm is required to provision a ZTP cluster")
+		}
+
 		owner, email, err := resolveOwnerEmail(ztpOwner, ztpEmail)
 		if err != nil {
 			return err
@@ -107,6 +112,7 @@ func init() {
 	ztpProvisionCmd.Flags().StringVar(&ztpBMMasters, "bm-masters", "", "Comma-separated baremetal master hosts (MNO only)")
 	ztpProvisionCmd.Flags().StringVar(&ztpBMWorkers, "bm-workers", "", "Comma-separated baremetal worker hosts")
 	ztpProvisionCmd.Flags().StringVar(&ztpVMWorkers, "vm-workers", "1", "Number of VM workers")
+	ztpProvisionCmd.Flags().BoolVar(&confirmZTP, "confirm", false, "Confirm provisioning (required)")
 
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCChoice, "choice", "", "Kubeconfig type: management or spoke")
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCDest, "dest", "", "Local destination path")

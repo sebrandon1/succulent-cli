@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	confirmHS       bool
 	hsOwner         string
 	hsEmail         string
 	hsSNOTag        string
@@ -31,9 +32,13 @@ var hsProvisionCmd = &cobra.Command{
 	Use:   cmdNameProvision,
 	Short: "Provision a Hypershift hosted cluster",
 	Long:  `Submit a Hypershift provisioning request for the specified environment.`,
-	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17
-  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2`,
+	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17 --confirm
+  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2 --confirm`,
 	RunE: func(_ *cobra.Command, _ []string) error {
+		if !confirmHS {
+			return fmt.Errorf("--confirm is required to provision a Hypershift cluster")
+		}
+
 		owner, email, err := resolveOwnerEmail(hsOwner, hsEmail)
 		if err != nil {
 			return err
@@ -95,6 +100,7 @@ func init() {
 	hsProvisionCmd.Flags().StringVar(&hsHCPFullTag, "hcp-full-tag", "", "Hosted cluster full OCP tag")
 	hsProvisionCmd.Flags().StringVar(&hsVMWorkers, "vm-workers", "0", "Number of VM workers for hosted cluster")
 	hsProvisionCmd.Flags().StringVar(&hsImageOverride, "image-override", "", "Hypershift operator image override")
+	hsProvisionCmd.Flags().BoolVar(&confirmHS, "confirm", false, "Confirm provisioning (required)")
 
 	hsKubeconfigCmd.Flags().StringVar(&hsKCChoice, "choice", "", "Kubeconfig type: management or hosted")
 	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path")

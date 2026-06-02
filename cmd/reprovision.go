@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	confirmReprovision   bool
 	reprovEmail          string
 	reprovOwner          string
 	reprovTag            string
@@ -24,9 +25,13 @@ var reprovisionCmd = &cobra.Command{
 	Use:   "reprovision",
 	Short: "Reprovision an MNO cluster",
 	Long:  `Submit a reprovisioning request to the succulent service for the specified environment.`,
-	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.17
-  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.18 --version ci`,
+	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.17 --confirm
+  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --tag 4.18 --version ci --confirm`,
 	RunE: func(_ *cobra.Command, _ []string) error {
+		if !confirmReprovision {
+			return fmt.Errorf("--confirm is required to reprovision an environment")
+		}
+
 		owner, email, err := resolveOwnerEmail(reprovOwner, reprovEmail)
 		if err != nil {
 			return err
@@ -66,6 +71,8 @@ func init() {
 	reprovisionCmd.Flags().StringVar(&reprovAddlWorkers, "additional-workers", "", "Comma-separated extra baremetal worker names")
 	reprovisionCmd.Flags().StringVar(&reprovEndDate, "end-date", "", "End date for the environment")
 	reprovisionCmd.Flags().StringVar(&reprovKcliParams, "kcli-params", "", "Additional kcli parameters (key:value format)")
+
+	reprovisionCmd.Flags().BoolVar(&confirmReprovision, "confirm", false, "Confirm reprovisioning (required)")
 
 	cobra.CheckErr(reprovisionCmd.MarkFlagRequired("tag"))
 

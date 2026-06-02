@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	confirmSNO   bool
 	snoOwner     string
 	snoEmail     string
 	snoOCPTag    string
@@ -21,9 +22,13 @@ var snoProvisionCmd = &cobra.Command{
 	Use:   cmdNameProvision,
 	Short: "Provision an SNO cluster",
 	Long:  `Submit an SNO provisioning request to the succulent service for the specified environment.`,
-	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17
-  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456`,
+	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17 --confirm
+  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456 --confirm`,
 	RunE: func(_ *cobra.Command, _ []string) error {
+		if !confirmSNO {
+			return fmt.Errorf("--confirm is required to provision an SNO cluster")
+		}
+
 		owner, email, err := resolveOwnerEmail(snoOwner, snoEmail)
 		if err != nil {
 			return err
@@ -77,6 +82,7 @@ func init() {
 	snoProvisionCmd.Flags().StringVar(&snoRelease, "release-type", "nightly", "OCP release type (e.g., nightly, ci)")
 	snoProvisionCmd.Flags().StringVar(&snoFullTag, "full-ocp-tag", "", "Full OCP tag (e.g., 4.14.0-0.nightly-2023-12-14-072431)")
 	snoProvisionCmd.Flags().StringVar(&snoFullImage, "full-image", "", "Full image name to use for installation")
+	snoProvisionCmd.Flags().BoolVar(&confirmSNO, "confirm", false, "Confirm provisioning (required)")
 
 	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/{env}-sno-kubeconfig)")
 }
