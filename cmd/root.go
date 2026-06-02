@@ -16,6 +16,7 @@ var (
 	succulentURL     string
 	envName          string
 	verifySSL        bool
+	caCertPath       string
 	outputFormat     string
 	sharedClient     *lib.Client
 	sharedCache      *lib.Cache
@@ -38,7 +39,15 @@ kubeconfig retrieval, and environment deletion.`,
 
 		succulentURL = viper.GetString("url")
 		verifySSL = viper.GetBool("verify_ssl")
-		sharedClient = lib.NewClient(succulentURL, !verifySSL)
+		caCertPath = viper.GetString("ca_cert")
+
+		var err error
+
+		sharedClient, err = lib.NewClient(succulentURL, !verifySSL, caCertPath)
+		if err != nil {
+			return err
+		}
+
 		sharedCache = lib.NewCache(configDir(), 60*time.Second)
 
 		if skipEnvRequirement(cmd) {
@@ -127,12 +136,15 @@ func init() {
 		"Environment name (e.g., env1, env2)")
 	rootCmd.PersistentFlags().BoolVar(&verifySSL, "verify-ssl", false,
 		"Enable SSL certificate verification")
+	rootCmd.PersistentFlags().StringVar(&caCertPath, "ca-cert", "",
+		"Path to CA certificate bundle (PEM format)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table",
 		"Output format (json or table)")
 
 	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
 	_ = viper.BindPFlag("env", rootCmd.PersistentFlags().Lookup("env"))
 	_ = viper.BindPFlag("verify_ssl", rootCmd.PersistentFlags().Lookup("verify-ssl"))
+	_ = viper.BindPFlag("ca_cert", rootCmd.PersistentFlags().Lookup("ca-cert"))
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(kubeconfigCmd)
