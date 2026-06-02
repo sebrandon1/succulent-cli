@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/sebrandon1/succulent-cli/lib"
@@ -14,6 +16,8 @@ var (
 	listNoDetail     bool
 	listNoCache      bool
 	listConcurrency  int
+	listSortBy       string
+	listFilter       string
 )
 
 var listCmd = &cobra.Command{
@@ -71,6 +75,15 @@ func listDetailed() error {
 		return fmt.Errorf("listing environments: %w", err)
 	}
 
+	if listFilter != "" {
+		details, err = filterDetails(details, listFilter)
+		if err != nil {
+			return err
+		}
+	}
+
+	sortDetails(details, listSortBy)
+
 	if listOutputFormat == "json" {
 		return printJSON(details)
 	}
@@ -102,11 +115,63 @@ func listDetailed() error {
 	return w.Flush()
 }
 
+func filterDetails(details []lib.EnvironmentDetail, filter string) ([]lib.EnvironmentDetail, error) {
+	parts := strings.SplitN(filter, "=", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid filter format %q; expected key=value (e.g., status=active)", filter)
+	}
+
+	key := strings.ToLower(parts[0])
+	val := strings.ToLower(parts[1])
+
+	var filtered []lib.EnvironmentDetail
+
+	for _, d := range details {
+		var fieldVal string
+
+		switch key {
+		case "name":
+			fieldVal = d.Name
+		case "status":
+			fieldVal = d.Status
+		case "group":
+			fieldVal = d.Group
+		case "owner":
+			fieldVal = d.Owner
+		default:
+			return nil, fmt.Errorf("unknown filter key %q; valid keys: name, status, group, owner", key)
+		}
+
+		if strings.EqualFold(fieldVal, val) {
+			filtered = append(filtered, d)
+		}
+	}
+
+	return filtered, nil
+}
+
+func sortDetails(details []lib.EnvironmentDetail, sortBy string) {
+	sort.Slice(details, func(i, j int) bool {
+		switch sortBy {
+		case "status":
+			return details[i].Status < details[j].Status
+		case "group":
+			return details[i].Group < details[j].Group
+		case "nodes-up":
+			return details[i].NodesUp > details[j].NodesUp
+		default:
+			return details[i].Name < details[j].Name
+		}
+	})
+}
+
 func init() {
 	listCmd.Flags().StringVarP(&listOutputFormat, "output", "o", "table", "Output format (json or table)")
 	listCmd.Flags().BoolVar(&listNoDetail, "no-detail", false, "Skip fetching per-environment info (fast mode)")
 	listCmd.Flags().BoolVar(&listNoCache, "no-cache", false, "Bypass the info cache")
 	listCmd.Flags().IntVar(&listConcurrency, "concurrency", 10, "Number of parallel info fetches")
+	listCmd.Flags().StringVar(&listSortBy, "sort", "name", "Sort by field: name, status, group, nodes-up")
+	listCmd.Flags().StringVar(&listFilter, "filter", "", "Filter environments: key=value (e.g., status=active, group=Lab1)")
 
 	rootCmd.AddCommand(listCmd)
 }
