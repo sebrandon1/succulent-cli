@@ -30,11 +30,11 @@ func resolveOwnerEmail(owner, email string) (string, string, error) {
 	}
 
 	if owner == "" {
-		return "", "", fmt.Errorf("--owner is required (or set default_owner in config)")
+		return "", "", fmt.Errorf("--owner is required (or set default_owner in config); try: succulent-cli config init")
 	}
 
 	if email == "" {
-		return "", "", fmt.Errorf("--email is required (or set default_email in config)")
+		return "", "", fmt.Errorf("--email is required (or set default_email in config); try: succulent-cli config init")
 	}
 
 	return owner, email, nil

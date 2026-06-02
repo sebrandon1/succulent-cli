@@ -45,7 +45,7 @@ func (c *Client) getRaw(requestURL string) (*http.Response, error) {
 
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%w (check --url and --verify-ssl settings)", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -61,7 +61,7 @@ func (c *Client) getRaw(requestURL string) (*http.Response, error) {
 func (c *Client) postForm(endpoint string, data url.Values) error {
 	resp, err := c.HTTPClient.PostForm(endpoint, data)
 	if err != nil {
-		return fmt.Errorf("failed to submit form: %w", err)
+		return fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
 	}
 	defer resp.Body.Close()
 

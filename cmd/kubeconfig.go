@@ -47,7 +47,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 		}
 
 		if installerIP == "" {
-			return fmt.Errorf("could not determine installer IP")
+			return fmt.Errorf("could not determine installer IP for %s; try: succulent-cli get info --env %s", envName, envName)
 		}
 
 		dest := destPath

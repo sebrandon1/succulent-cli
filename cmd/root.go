@@ -47,7 +47,7 @@ kubeconfig retrieval, and environment deletion.`,
 		envName = viper.GetString("env")
 
 		if envName == "" {
-			return fmt.Errorf("--env is required (or set in config file / SUCCULENT_ENV)")
+			return fmt.Errorf("--env is required (set via flag, SUCCULENT_ENV env var, or config file at %s/config.yaml)", configDir())
 		}
 
 		return nil
