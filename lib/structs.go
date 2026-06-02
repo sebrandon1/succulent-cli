@@ -1,5 +1,7 @@
 package lib
 
+import "net/url"
+
 const (
 	StatusUp   = "up"
 	StatusDown = "down"
@@ -110,4 +112,86 @@ type SNOProvisionRequest struct {
 	ReleaseType   string `json:"ocp_release_type,omitempty"`
 	FullOCPTag    string `json:"full_ocp_tag,omitempty"`
 	FullImageName string `json:"full_image_name,omitempty"`
+}
+
+func (r *ReprovisionRequest) FormValues() url.Values {
+	data := url.Values{
+		formFieldMailToAlt: {r.Email},
+		formFieldOwner:     {r.Owner},
+		"tag":              {r.Tag},
+		"version":          {r.Version},
+	}
+
+	setIfNotEmpty(data, "openshift_image", r.OpenshiftImage)
+	setIfNotEmpty(data, "disk_size", r.DiskSize)
+	setIfNotEmpty(data, "virtual_workers", r.VirtualWorkers)
+	setIfNotEmpty(data, "additional_workers", r.AdditionalWorkers)
+	setIfNotEmpty(data, "end_date", r.EndDate)
+	setIfNotEmpty(data, "kcli_params", r.KcliParams)
+
+	return data
+}
+
+func (r *SNOProvisionRequest) FormValues() url.Values {
+	data := url.Values{
+		formFieldOwner:     {r.Owner},
+		formFieldMailToAlt: {r.Email},
+	}
+
+	setIfNotEmpty(data, "ocp_tag", r.OCPTag)
+	setIfNotEmpty(data, "ocp_release_type", r.ReleaseType)
+	setIfNotEmpty(data, "full_ocp_tag", r.FullOCPTag)
+	setIfNotEmpty(data, "full_image_name", r.FullImageName)
+
+	return data
+}
+
+func (r *ZTPRequest) FormValues() url.Values {
+	data := url.Values{
+		formFieldOwner:  {r.Owner},
+		formFieldMailTo: {r.Email},
+	}
+
+	setIfNotEmpty(data, "sno_tag", r.SNOTag)
+	setIfNotEmpty(data, "sno_release", r.SNORelease)
+	setIfNotEmpty(data, "sno_full_tag", r.SNOFullTag)
+	setIfNotEmpty(data, "ztp_tag", r.ZTPTag)
+	setIfNotEmpty(data, "ztp_release", r.ZTPRelease)
+	setIfNotEmpty(data, "ztp_full_tag", r.ZTPFullTag)
+	setIfNotEmpty(data, "ztp_type", r.ZTPType)
+
+	if r.StopBeforeDeployment {
+		data.Set("stop_before_deployment", "on")
+	}
+
+	setIfNotEmpty(data, "vm-masters-count", r.VMMastersCount)
+	setIfNotEmpty(data, "bm-masters-hosts", r.BMMastersHosts)
+	setIfNotEmpty(data, "bm-workers-hosts", r.BMWorkersHosts)
+	setIfNotEmpty(data, "vm-workers-count", r.VMWorkersCount)
+
+	return data
+}
+
+func (r *HypershiftRequest) FormValues() url.Values {
+	data := url.Values{
+		formFieldOwner:  {r.Owner},
+		formFieldMailTo: {r.Email},
+	}
+
+	setIfNotEmpty(data, "sno_tag", r.SNOTag)
+	setIfNotEmpty(data, "sno_release", r.SNORelease)
+	setIfNotEmpty(data, "sno_full_tag", r.SNOFullTag)
+	setIfNotEmpty(data, "hcp_tag", r.HCPTag)
+	setIfNotEmpty(data, "hcp_release", r.HCPRelease)
+	setIfNotEmpty(data, "hcp_full_tag", r.HCPFullTag)
+	setIfNotEmpty(data, "vm-workers-count", r.VMWorkersCount)
+	setIfNotEmpty(data, "image_override", r.ImageOverride)
+
+	return data
+}
+
+func setIfNotEmpty(data url.Values, key, value string) {
+	if value != "" {
+		data.Set(key, value)
+	}
 }
