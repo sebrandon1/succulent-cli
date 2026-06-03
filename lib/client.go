@@ -66,10 +66,15 @@ func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Cli
 	}, nil
 }
 
-func (c *Client) doWithRetry(req *http.Request) (*http.Response, error) {
+func (c *Client) doWithRetry(newReq func() (*http.Request, error)) (*http.Response, error) {
 	var lastErr error
 
 	for attempt := range c.MaxRetries {
+		req, err := newReq()
+		if err != nil {
+			return nil, err
+		}
+
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
 			lastErr = err
@@ -106,12 +111,9 @@ func (c *Client) sleepWithJitter(attempt int) {
 }
 
 func (c *Client) getRaw(requestURL string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", requestURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.doWithRetry(req)
+	resp, err := c.doWithRetry(func() (*http.Request, error) {
+		return http.NewRequest("GET", requestURL, nil)
+	})
 	if err != nil {
 		return nil, fmt.Errorf("%w (check --url and --verify-ssl settings)", err)
 	}
@@ -127,14 +129,18 @@ func (c *Client) getRaw(requestURL string) (*http.Response, error) {
 }
 
 func (c *Client) postForm(endpoint string, data url.Values) error {
-	req, err := http.NewRequest("POST", endpoint, strings.NewReader(data.Encode()))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
-	}
+	encoded := data.Encode()
 
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := c.doWithRetry(func() (*http.Request, error) {
+		req, err := http.NewRequest("POST", endpoint, strings.NewReader(encoded))
+		if err != nil {
+			return nil, err
+		}
 
-	resp, err := c.doWithRetry(req)
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		return req, nil
+	})
 	if err != nil {
 		return fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
 	}

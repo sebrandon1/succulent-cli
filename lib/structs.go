@@ -13,7 +13,7 @@ const (
 	endpointRoot                 = "/"
 	endpointInfoPlan             = "/infoplan/%s"
 	endpointLog                  = "/ztp_log/%s"
-	endpointReprovision          = "/exposeform/%s"
+	endpointReprovision          = "/exposecreate"
 	endpointDelete               = "/exposedelete"
 	endpointSNOProvision         = "/sno/%s"
 	endpointSNOKubeconfig        = "/sno_kubeconfig/%s"
@@ -116,18 +116,17 @@ type SNOProvisionRequest struct {
 
 func (r *ReprovisionRequest) FormValues() url.Values {
 	data := url.Values{
-		formFieldMailToAlt: {r.Email},
-		formFieldOwner:     {r.Owner},
-		"tag":              {r.Tag},
-		"version":          {r.Version},
+		"parameter_mail_to":   {r.Email},
+		"parameter_owner":     {r.Owner},
+		"parameter_tag":       {r.Tag},
+		"parameter_version":   {r.Version},
+		"parameter_disk_size": {r.DiskSize},
 	}
 
-	setIfNotEmpty(data, "openshift_image", r.OpenshiftImage)
-	setIfNotEmpty(data, "disk_size", r.DiskSize)
-	setIfNotEmpty(data, "virtual_workers", r.VirtualWorkers)
-	setIfNotEmpty(data, "additional_workers", r.AdditionalWorkers)
-	setIfNotEmpty(data, "end_date", r.EndDate)
-	setIfNotEmpty(data, "kcli_params", r.KcliParams)
+	setIfNotEmpty(data, "parameter_openshift_image", r.OpenshiftImage)
+	setIfNotEmpty(data, "parameter_virtual_workers", r.VirtualWorkers)
+	setIfNotEmpty(data, "parameter_additional_workers", r.AdditionalWorkers)
+	setIfNotEmpty(data, "additional_params", r.KcliParams)
 
 	return data
 }
