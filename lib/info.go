@@ -90,8 +90,9 @@ func parseNodeRow(name, status string, cells []string) *NodeInfo {
 	}
 
 	node := &NodeInfo{
-		Name:   name,
-		Status: statusLower,
+		Name:     name,
+		Status:   statusLower,
+		NodeType: classifyNodeType(name),
 	}
 
 	if len(cells) > 2 {
@@ -101,6 +102,21 @@ func parseNodeRow(name, status string, cells []string) *NodeInfo {
 	}
 
 	return node
+}
+
+func classifyNodeType(name string) string {
+	nameLower := strings.ToLower(name)
+
+	switch {
+	case strings.Contains(nameLower, "installer"):
+		return NodeTypeInstaller
+	case strings.Contains(nameLower, "master"):
+		return NodeTypeMaster
+	case strings.Contains(nameLower, "bootstrap"):
+		return NodeTypeBootstrap
+	default:
+		return NodeTypeWorker
+	}
 }
 
 func extractTableRows(n *html.Node, rows *[][]string) {

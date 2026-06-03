@@ -31,7 +31,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 		var installerIP string
 
 		if waitForReady {
-			ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stdout)
+			ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stdout, controlPlaneOnly)
 			if err != nil {
 				return fmt.Errorf("waiting for cluster: %w", err)
 			}
@@ -78,7 +78,8 @@ func init() {
 	fetchKubeconfigCmd.Flags().StringVar(&remoteUser, "user", defaultRemoteUser, "Remote SSH user")
 	fetchKubeconfigCmd.Flags().StringVar(&remotePath, "path", defaultRemotePath, "Remote kubeconfig path")
 	fetchKubeconfigCmd.Flags().StringVar(&destPath, "dest", "", "Local destination path (default: ~/Downloads/{env}-kubeconfig)")
-	fetchKubeconfigCmd.Flags().BoolVar(&waitForReady, "wait", false, "Wait for all cluster nodes to be up before fetching")
+	fetchKubeconfigCmd.Flags().BoolVar(&waitForReady, "wait", false, "Wait for cluster nodes to be up before fetching")
+	fetchKubeconfigCmd.Flags().BoolVar(&controlPlaneOnly, "control-plane-only", false, "With --wait, report ready when installer and masters are up")
 	fetchKubeconfigCmd.Flags().IntVar(&maxWaitMinutes, "max-wait", defaultMaxWaitMinutes, "Maximum minutes to wait for cluster ready")
 	fetchKubeconfigCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks when waiting")
 

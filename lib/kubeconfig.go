@@ -65,7 +65,19 @@ func FetchKubeconfig(ip, user, remotePath, destPath string) error {
 	return nil
 }
 
-func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSeconds int, w io.Writer) (string, error) {
+func isClusterReady(nodes []NodeInfo, controlPlaneOnly bool) bool {
+	for _, node := range nodes {
+		if node.Status != StatusUp {
+			if !controlPlaneOnly || node.NodeType == NodeTypeInstaller || node.NodeType == NodeTypeMaster {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSeconds int, w io.Writer, controlPlaneOnly bool) (string, error) {
 	deadline := time.Now().Add(time.Duration(maxWaitMinutes) * time.Minute)
 	interval := time.Duration(pollIntervalSeconds) * time.Second
 	attempt := 0
@@ -83,18 +95,18 @@ func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSec
 		}
 
 		if info.InstallerIP != "" {
-			allUp := true
+			ready := isClusterReady(info.Nodes, controlPlaneOnly)
 
-			for _, node := range info.Nodes {
-				if node.Status != StatusUp {
-					allUp = false
-
-					break
-				}
-			}
-
-			if allUp {
+			if ready {
 				fmt.Fprintf(w, "Cluster ready. Installer IP: %s\n", info.InstallerIP)
+
+				if controlPlaneOnly {
+					for _, node := range info.Nodes {
+						if node.Status != StatusUp {
+							fmt.Fprintf(w, "  Note: %s still %s\n", node.Name, node.Status)
+						}
+					}
+				}
 
 				return info.InstallerIP, nil
 			}

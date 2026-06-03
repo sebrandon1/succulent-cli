@@ -6,6 +6,11 @@ const (
 	StatusUp   = "up"
 	StatusDown = "down"
 
+	NodeTypeInstaller = "installer"
+	NodeTypeMaster    = "master"
+	NodeTypeWorker    = "worker"
+	NodeTypeBootstrap = "bootstrap"
+
 	formFieldOwner     = "owner"
 	formFieldMailTo    = "mail_to"
 	formFieldMailToAlt = "mailto"
@@ -25,9 +30,10 @@ const (
 
 // NodeInfo represents a single VM/node from the infoplan page.
 type NodeInfo struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-	IP     string `json:"ip,omitempty"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+	IP       string `json:"ip,omitempty"`
+	NodeType string `json:"node_type,omitempty"`
 }
 
 // ClusterInfo represents the parsed result of the infoplan page.
