@@ -75,7 +75,7 @@ func TestWaitForClusterReadyAllUp(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
 	if err != nil {
 		t.Fatalf("WaitForClusterReady failed: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestWaitForClusterReadyEventuallyUp(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
 	if err != nil {
 		t.Fatalf("WaitForClusterReady failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestWaitForClusterReadyNoInstallerIP(t *testing.T) {
 	client := newTestClient(server.URL)
 
 	// Short timeout so test doesn't hang — no installer IP means it times out
-	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard)
+	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, false)
 	if err == nil {
 		t.Fatal("Expected error for timeout, got nil")
 	}
@@ -158,7 +158,7 @@ func TestWaitForClusterReadyServerError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard)
+	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, false)
 	if err == nil {
 		t.Fatal("Expected error for timeout after server errors, got nil")
 	}
@@ -194,7 +194,7 @@ func TestWaitForClusterReadyPartialUp(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard)
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
 	if err != nil {
 		t.Fatalf("WaitForClusterReady failed: %v", err)
 	}
@@ -205,5 +205,60 @@ func TestWaitForClusterReadyPartialUp(t *testing.T) {
 
 	if attempt < 2 {
 		t.Errorf("Expected at least 2 attempts for partial-up, got %d", attempt)
+	}
+}
+
+func TestWaitForClusterReadyControlPlaneOnly(t *testing.T) {
+	html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-06-03</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>up</td><td>%s</td></tr>
+<tr><td>%s-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+<tr><td>%s-master-1</td><td>up</td><td>192.168.1.102</td></tr>
+<tr><td>%s-master-2</td><td>up</td><td>192.168.1.103</td></tr>
+<tr><td>%s-worker-0</td><td>down</td><td></td></tr>
+</table></body></html>`, testEnv, testEnv, testInstallerIP, testEnv, testEnv, testEnv, testEnv)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, true)
+	if err != nil {
+		t.Fatalf("Expected ready with control-plane-only, got error: %v", err)
+	}
+
+	if ip != testInstallerIP {
+		t.Errorf("Expected installer IP %s, got %s", testInstallerIP, ip)
+	}
+}
+
+func TestWaitForClusterReadyControlPlaneOnlyMasterDown(t *testing.T) {
+	html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-06-03</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>up</td><td>%s</td></tr>
+<tr><td>%s-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+<tr><td>%s-master-1</td><td>down</td><td></td></tr>
+<tr><td>%s-worker-0</td><td>down</td><td></td></tr>
+</table></body></html>`, testEnv, testEnv, testInstallerIP, testEnv, testEnv, testEnv)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, true)
+	if err == nil {
+		t.Fatal("Expected timeout when master is still down in control-plane-only mode")
 	}
 }
