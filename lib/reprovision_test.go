@@ -40,6 +40,14 @@ func TestReprovision(t *testing.T) {
 			t.Errorf("Expected parameter_version nightly, got %s", r.FormValue("parameter_version"))
 		}
 
+		if r.FormValue("parameter_virtual_workers") != "true" {
+			t.Errorf("Expected default parameter_virtual_workers true, got %s", r.FormValue("parameter_virtual_workers"))
+		}
+
+		if r.FormValue("parameter_additional_workers") != "false" {
+			t.Errorf("Expected default parameter_additional_workers false, got %s", r.FormValue("parameter_additional_workers"))
+		}
+
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
