@@ -2,7 +2,6 @@ package lib
 
 import (
 	"fmt"
-	"io"
 	"net/url"
 )
 
@@ -27,19 +26,9 @@ func (c *Client) GetZTPKubeconfig(env, choice string) ([]byte, error) {
 		"choice":    {choice},
 	}
 
-	resp, err := c.HTTPClient.PostForm(endpoint, data)
+	body, err := c.postFormRaw(endpoint, data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch ZTP kubeconfig for %s: %w", env, err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read kubeconfig response: %w", err)
-	}
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
 	}
 
 	return body, nil
