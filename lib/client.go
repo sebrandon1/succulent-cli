@@ -155,3 +155,42 @@ func (c *Client) postForm(endpoint string, data url.Values) error {
 
 	return nil
 }
+
+// postFormRaw submits a form and returns the raw response body.
+// Used for endpoints that return binary data (e.g., kubeconfig files).
+func (c *Client) postFormRaw(endpoint string, data url.Values) ([]byte, error) {
+	encoded := data.Encode()
+
+	resp, err := c.doWithRetry(func() (*http.Request, error) {
+		req, err := http.NewRequest("POST", endpoint, strings.NewReader(encoded))
+		if err != nil {
+			return nil, err
+		}
+
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		return req, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
+	}
+	defer resp.Body.Close()
+
+	// Limit response size to prevent memory exhaustion (10MB for kubeconfig data)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		// For errors, limit output to 4KB
+		errorBody := body
+		if len(errorBody) > 4096 {
+			errorBody = errorBody[:4096]
+		}
+
+		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(errorBody))
+	}
+
+	return body, nil
+}
