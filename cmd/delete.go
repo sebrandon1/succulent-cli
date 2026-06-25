@@ -13,12 +13,12 @@ var deleteCmd = &cobra.Command{
 	Short:   "Delete an environment",
 	Long:    `Delete the specified environment from the succulent service. Requires --confirm flag for safety.`,
 	Example: `  succulent-cli delete --env myenv --confirm`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmDelete {
 			return fmt.Errorf("--confirm is required to delete an environment")
 		}
 
-		if err := sharedClient.DeleteEnvironment(envName); err != nil {
+		if err := sharedClient.DeleteEnvironment(cmd.Context(), envName); err != nil {
 			return fmt.Errorf("deleting environment: %w", err)
 		}
 

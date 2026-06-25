@@ -38,7 +38,7 @@ var ztpProvisionCmd = &cobra.Command{
 	Long:  `Submit a ZTP provisioning request for the specified environment.`,
 	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmZTP {
 			return fmt.Errorf("--confirm is required to provision a ZTP cluster")
 		}
@@ -65,7 +65,7 @@ var ztpProvisionCmd = &cobra.Command{
 			VMWorkersCount:       ztpVMWorkers,
 		}
 
-		if err := sharedClient.ProvisionZTP(envName, &req); err != nil {
+		if err := sharedClient.ProvisionZTP(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting ZTP provision request: %w", err)
 		}
 
@@ -82,8 +82,8 @@ var ztpKubeconfigCmd = &cobra.Command{
 	Short: "Download the ZTP kubeconfig",
 	Example: `  succulent-cli ztp kubeconfig --env myenv --choice management
   succulent-cli ztp kubeconfig --env myenv --choice spoke`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		data, err := sharedClient.GetZTPKubeconfig(envName, ztpKCChoice)
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		data, err := sharedClient.GetZTPKubeconfig(cmd.Context(), envName, ztpKCChoice)
 		if err != nil {
 			return fmt.Errorf("fetching ZTP kubeconfig: %w", err)
 		}

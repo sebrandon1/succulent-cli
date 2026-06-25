@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -12,8 +13,8 @@ import (
 
 var infoplanLinkRegex = regexp.MustCompile(`/infoplan/([a-zA-Z0-9_-]+)`)
 
-func (c *Client) ListEnvironments() ([]EnvironmentInfo, error) {
-	resp, err := c.getRaw(c.BaseURL + endpointRoot)
+func (c *Client) ListEnvironments(ctx context.Context) ([]EnvironmentInfo, error) {
+	resp, err := c.getRaw(ctx, c.BaseURL+endpointRoot)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch environment list: %w", err)
 	}
@@ -22,8 +23,8 @@ func (c *Client) ListEnvironments() ([]EnvironmentInfo, error) {
 	return parseEnvironmentList(resp.Body)
 }
 
-func (c *Client) ListEnvironmentsWithInfo(concurrency int, cache *Cache) ([]EnvironmentDetail, error) {
-	envs, err := c.ListEnvironments()
+func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, cache *Cache) ([]EnvironmentDetail, error) {
+	envs, err := c.ListEnvironments(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,7 @@ func (c *Client) ListEnvironmentsWithInfo(concurrency int, cache *Cache) ([]Envi
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			info, infoErr := c.GetInfoPlan(envName)
+			info, infoErr := c.GetInfoPlan(ctx, envName)
 			if infoErr != nil {
 				return
 			}

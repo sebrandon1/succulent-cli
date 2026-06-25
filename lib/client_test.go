@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -68,7 +69,7 @@ func TestGetRawErrorStatus(t *testing.T) {
 	client := newTestClient(server.URL)
 	client.MaxRetries = 1
 
-	resp, err := client.getRaw(server.URL + "/test")
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
 	if err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
@@ -87,7 +88,7 @@ func TestGetRawSuccess(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	resp, err := client.getRaw(server.URL + "/test")
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -108,7 +109,7 @@ func TestPostFormErrorStatus(t *testing.T) {
 	client := newTestClient(server.URL)
 	client.MaxRetries = 1
 
-	err := client.postForm(server.URL+"/test", nil)
+	err := client.postForm(context.Background(), server.URL+"/test", nil)
 	if err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
@@ -122,7 +123,7 @@ func TestPostFormSuccess(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	err := client.postForm(server.URL+"/test", nil)
+	err := client.postForm(context.Background(), server.URL+"/test", nil)
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -136,7 +137,7 @@ func TestPostFormRedirectStatus(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	err := client.postForm(server.URL+"/test", nil)
+	err := client.postForm(context.Background(), server.URL+"/test", nil)
 	if err != nil {
 		t.Fatalf("Expected no error for 201 status, got %v", err)
 	}
@@ -146,7 +147,7 @@ func TestGetRawInvalidURL(t *testing.T) {
 	client := newTestClient("http://invalid.localhost.test:1")
 	client.MaxRetries = 1
 
-	_, err := client.getRaw("http://invalid.localhost.test:1/test")
+	_, err := client.getRaw(context.Background(), "http://invalid.localhost.test:1/test")
 	if err == nil {
 		t.Fatal("Expected error for invalid URL, got nil")
 	}
@@ -170,7 +171,7 @@ func TestRetryOn500ThenSuccess(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	resp, err := client.getRaw(server.URL + "/test")
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
 	if err != nil {
 		t.Fatalf("Expected success after retries, got %v", err)
 	}
@@ -193,7 +194,7 @@ func TestNoRetryOn400(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.getRaw(server.URL + "/test")
+	_, err := client.getRaw(context.Background(), server.URL+"/test")
 	if err == nil {
 		t.Fatal("Expected error for 400 response, got nil")
 	}
@@ -215,7 +216,7 @@ func TestRetryExhausted(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.getRaw(server.URL + "/test")
+	_, err := client.getRaw(context.Background(), server.URL+"/test")
 	if err == nil {
 		t.Fatal("Expected error after exhausted retries, got nil")
 	}

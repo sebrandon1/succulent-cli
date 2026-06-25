@@ -18,7 +18,7 @@ var infoCmd = &cobra.Command{
 	Example: `  succulent-cli get info --env myenv
   succulent-cli get info --env myenv --output table
   succulent-cli get info --env myenv --no-cache`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		var info *lib.ClusterInfo
 
 		if !infoNoCache && sharedCache != nil {
@@ -31,7 +31,7 @@ var infoCmd = &cobra.Command{
 		if info == nil {
 			var err error
 
-			info, err = sharedClient.GetInfoPlan(envName)
+			info, err = sharedClient.GetInfoPlan(cmd.Context(), envName)
 			if err != nil {
 				return fmt.Errorf("fetching info: %w", err)
 			}

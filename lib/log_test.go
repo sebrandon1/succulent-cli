@@ -2,6 +2,7 @@ package lib
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,7 +25,7 @@ func TestStreamLog(t *testing.T) {
 	client := newTestClient(server.URL)
 
 	var buf bytes.Buffer
-	if err := client.StreamLog(testEnv, &buf); err != nil {
+	if err := client.StreamLog(context.Background(), testEnv, &buf); err != nil {
 		t.Fatalf("StreamLog failed: %v", err)
 	}
 
@@ -43,7 +44,7 @@ func TestStreamLogError(t *testing.T) {
 	client := newTestClient(server.URL)
 
 	var buf bytes.Buffer
-	if err := client.StreamLog(testEnv, &buf); err == nil {
+	if err := client.StreamLog(context.Background(), testEnv, &buf); err == nil {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
 }

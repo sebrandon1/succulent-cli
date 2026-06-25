@@ -1,6 +1,8 @@
 package lib
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -140,7 +142,7 @@ func TestWaitForClusterReadyAllUp(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
+	ip, err := client.WaitForClusterReady(context.Background(), testEnv, 1, 1, io.Discard, false)
 	if err != nil {
 		t.Fatalf("WaitForClusterReady failed: %v", err)
 	}
@@ -177,7 +179,7 @@ func TestWaitForClusterReadyEventuallyUp(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
+	ip, err := client.WaitForClusterReady(context.Background(), testEnv, 1, 1, io.Discard, false)
 	if err != nil {
 		t.Fatalf("WaitForClusterReady failed: %v", err)
 	}
@@ -208,7 +210,7 @@ func TestWaitForClusterReadyNoInstallerIP(t *testing.T) {
 	client := newTestClient(server.URL)
 
 	// Short timeout so test doesn't hang — no installer IP means it times out
-	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, false)
+	_, err := client.WaitForClusterReady(context.Background(), testEnv, 0, 1, io.Discard, false)
 	if err == nil {
 		t.Fatal("Expected error for timeout, got nil")
 	}
@@ -223,7 +225,7 @@ func TestWaitForClusterReadyServerError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, false)
+	_, err := client.WaitForClusterReady(context.Background(), testEnv, 0, 1, io.Discard, false)
 	if err == nil {
 		t.Fatal("Expected error for timeout after server errors, got nil")
 	}
@@ -259,7 +261,7 @@ func TestWaitForClusterReadyPartialUp(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
+	ip, err := client.WaitForClusterReady(context.Background(), testEnv, 1, 1, io.Discard, false)
 	if err != nil {
 		t.Fatalf("WaitForClusterReady failed: %v", err)
 	}
@@ -293,7 +295,7 @@ func TestWaitForClusterReadyControlPlaneOnly(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	ip, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, true)
+	ip, err := client.WaitForClusterReady(context.Background(), testEnv, 1, 1, io.Discard, true)
 	if err != nil {
 		t.Fatalf("Expected ready with control-plane-only, got error: %v", err)
 	}
@@ -411,8 +413,37 @@ func TestWaitForClusterReadyControlPlaneOnlyMasterDown(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, true)
+	_, err := client.WaitForClusterReady(context.Background(), testEnv, 0, 1, io.Discard, true)
 	if err == nil {
 		t.Fatal("Expected timeout when master is still down in control-plane-only mode")
+	}
+}
+
+func TestWaitForClusterReadyCancelled(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-06-25</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>down</td><td></td></tr>
+</table></body></html>`, testEnv, testEnv)
+
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel immediately
+
+	_, err := client.WaitForClusterReady(ctx, testEnv, 60, 1, io.Discard, false)
+	if err == nil {
+		t.Fatal("Expected error from canceled context, got nil")
+	}
+
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("Expected context.Canceled error, got: %v", err)
 	}
 }

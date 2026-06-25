@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -48,7 +49,7 @@ func TestProvisionZTP(t *testing.T) {
 		ZTPType:    "sno",
 	}
 
-	if err := client.ProvisionZTP(testEnv, req); err != nil {
+	if err := client.ProvisionZTP(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionZTP failed: %v", err)
 	}
 }
@@ -89,7 +90,7 @@ func TestProvisionZTPMNO(t *testing.T) {
 		VMWorkersCount: "1",
 	}
 
-	if err := client.ProvisionZTP(testEnv, req); err != nil {
+	if err := client.ProvisionZTP(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionZTP failed: %v", err)
 	}
 }
@@ -105,7 +106,7 @@ func TestProvisionZTPError(t *testing.T) {
 
 	req := &ZTPRequest{Owner: "testuser", Email: "test@example.com"}
 
-	if err := client.ProvisionZTP(testEnv, req); err == nil {
+	if err := client.ProvisionZTP(context.Background(), testEnv, req); err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
 }
@@ -133,7 +134,7 @@ func TestGetZTPKubeconfig(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	data, err := client.GetZTPKubeconfig(testEnv, "spoke")
+	data, err := client.GetZTPKubeconfig(context.Background(), testEnv, "spoke")
 	if err != nil {
 		t.Fatalf("GetZTPKubeconfig failed: %v", err)
 	}
@@ -152,7 +153,7 @@ func TestGetZTPKubeconfigError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.GetZTPKubeconfig(testEnv, "management")
+	_, err := client.GetZTPKubeconfig(context.Background(), testEnv, "management")
 	if err == nil {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
@@ -207,7 +208,7 @@ func TestProvisionZTPAllFields(t *testing.T) {
 		VMWorkersCount:       "2",
 	}
 
-	if err := client.ProvisionZTP(testEnv, req); err != nil {
+	if err := client.ProvisionZTP(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionZTP failed: %v", err)
 	}
 }

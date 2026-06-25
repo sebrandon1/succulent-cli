@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,7 +31,7 @@ func TestDeleteEnvironment(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	if err := client.DeleteEnvironment(testEnv); err != nil {
+	if err := client.DeleteEnvironment(context.Background(), testEnv); err != nil {
 		t.Fatalf("DeleteEnvironment failed: %v", err)
 	}
 }
@@ -44,7 +45,7 @@ func TestDeleteEnvironmentError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	if err := client.DeleteEnvironment(testEnv); err == nil {
+	if err := client.DeleteEnvironment(context.Background(), testEnv); err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
 }

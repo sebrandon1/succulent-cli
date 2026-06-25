@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -41,7 +42,7 @@ func TestProvisionSNO(t *testing.T) {
 		ReleaseType: "nightly",
 	}
 
-	if err := client.ProvisionSNO(testEnv, req); err != nil {
+	if err := client.ProvisionSNO(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionSNO failed: %v", err)
 	}
 }
@@ -61,7 +62,7 @@ func TestGetSNOKubeconfig(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	data, err := client.GetSNOKubeconfig(testEnv)
+	data, err := client.GetSNOKubeconfig(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetSNOKubeconfig failed: %v", err)
 	}
@@ -85,7 +86,7 @@ func TestProvisionSNOError(t *testing.T) {
 		Email: "test@example.com",
 	}
 
-	if err := client.ProvisionSNO(testEnv, req); err == nil {
+	if err := client.ProvisionSNO(context.Background(), testEnv, req); err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
 }
@@ -99,7 +100,7 @@ func TestGetSNOKubeconfigError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.GetSNOKubeconfig(testEnv)
+	_, err := client.GetSNOKubeconfig(context.Background(), testEnv)
 	if err == nil {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
@@ -131,7 +132,7 @@ func TestProvisionSNOWithFullTag(t *testing.T) {
 		FullOCPTag: "4.14.0-0.nightly-2023-12-14-072431",
 	}
 
-	if err := client.ProvisionSNO(testEnv, req); err != nil {
+	if err := client.ProvisionSNO(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionSNO failed: %v", err)
 	}
 }

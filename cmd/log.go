@@ -13,8 +13,8 @@ var logCmd = &cobra.Command{
 	Long:  `Fetch the ZTP provisioning log (raw Ansible output) for the specified environment and stream it to stdout.`,
 	Example: `  succulent-cli get log --env myenv
   succulent-cli get log --env myenv | tail -50`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		if err := sharedClient.StreamLog(envName, os.Stdout); err != nil {
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		if err := sharedClient.StreamLog(cmd.Context(), envName, os.Stdout); err != nil {
 			return fmt.Errorf("fetching log: %w", err)
 		}
 

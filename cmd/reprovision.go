@@ -27,7 +27,7 @@ var reprovisionCmd = &cobra.Command{
 	Long:  `Submit a reprovisioning request to the succulent service for the specified environment.`,
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.17 --confirm
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.18 --release-type ci --confirm`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmReprovision {
 			return fmt.Errorf("--confirm is required to reprovision an environment")
 		}
@@ -50,7 +50,7 @@ var reprovisionCmd = &cobra.Command{
 			KcliParams:        reprovKcliParams,
 		}
 
-		if err := sharedClient.Reprovision(envName, &req); err != nil {
+		if err := sharedClient.Reprovision(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting reprovision request: %w", err)
 		}
 

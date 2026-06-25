@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +32,7 @@ func TestGetInfoPlan(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	info, err := client.GetInfoPlan(testEnv)
+	info, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetInfoPlan failed: %v", err)
 	}
@@ -81,7 +82,7 @@ func TestGetInfoPlanNoInstaller(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	info, err := client.GetInfoPlan(testEnv)
+	info, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetInfoPlan failed: %v", err)
 	}
@@ -106,7 +107,7 @@ func TestGetInfoPlanEmptyTable(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	info, err := client.GetInfoPlan(testEnv)
+	info, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetInfoPlan failed: %v", err)
 	}
@@ -131,7 +132,7 @@ func TestGetInfoPlanMinimalHTML(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	info, err := client.GetInfoPlan(testEnv)
+	info, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetInfoPlan failed: %v", err)
 	}
@@ -150,7 +151,7 @@ func TestGetInfoPlanServerError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.GetInfoPlan(testEnv)
+	_, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
@@ -172,7 +173,7 @@ func TestGetInfoPlanMultipleIPs(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	info, err := client.GetInfoPlan(testEnv)
+	info, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetInfoPlan failed: %v", err)
 	}
@@ -199,7 +200,7 @@ func TestGetInfoPlanSingleCellRow(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	info, err := client.GetInfoPlan(testEnv)
+	info, err := client.GetInfoPlan(context.Background(), testEnv)
 	if err != nil {
 		t.Fatalf("GetInfoPlan failed: %v", err)
 	}
