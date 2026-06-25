@@ -121,24 +121,14 @@ type SNOProvisionRequest struct {
 }
 
 func (r *ReprovisionRequest) FormValues() url.Values {
-	virtualWorkers := r.VirtualWorkers
-	if virtualWorkers == "" {
-		virtualWorkers = "true"
-	}
-
-	additionalWorkers := r.AdditionalWorkers
-	if additionalWorkers == "" {
-		additionalWorkers = "false"
-	}
-
 	data := url.Values{
 		"parameter_mail_to":            {r.Email},
 		"parameter_owner":              {r.Owner},
 		"parameter_tag":                {r.Tag},
 		"parameter_version":            {r.Version},
 		"parameter_disk_size":          {r.DiskSize},
-		"parameter_virtual_workers":    {virtualWorkers},
-		"parameter_additional_workers": {additionalWorkers},
+		"parameter_virtual_workers":    {r.VirtualWorkers},
+		"parameter_additional_workers": {r.AdditionalWorkers},
 	}
 
 	setIfNotEmpty(data, "parameter_openshift_image", r.OpenshiftImage)

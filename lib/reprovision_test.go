@@ -41,11 +41,11 @@ func TestReprovision(t *testing.T) {
 		}
 
 		if r.FormValue("parameter_virtual_workers") != "true" {
-			t.Errorf("Expected default parameter_virtual_workers true, got %s", r.FormValue("parameter_virtual_workers"))
+			t.Errorf("Expected parameter_virtual_workers true, got %s", r.FormValue("parameter_virtual_workers"))
 		}
 
 		if r.FormValue("parameter_additional_workers") != "false" {
-			t.Errorf("Expected default parameter_additional_workers false, got %s", r.FormValue("parameter_additional_workers"))
+			t.Errorf("Expected parameter_additional_workers false, got %s", r.FormValue("parameter_additional_workers"))
 		}
 
 		w.WriteHeader(http.StatusOK)
@@ -55,10 +55,12 @@ func TestReprovision(t *testing.T) {
 	client := newTestClient(server.URL)
 
 	req := &ReprovisionRequest{
-		Email:   "test@example.com",
-		Owner:   "testuser",
-		Tag:     "4.17",
-		Version: "nightly",
+		Email:             "test@example.com",
+		Owner:             "testuser",
+		Tag:               "4.17",
+		Version:           "nightly",
+		VirtualWorkers:    "true",
+		AdditionalWorkers: "false",
 	}
 
 	if err := client.Reprovision(testEnv, req); err != nil {
@@ -115,10 +117,12 @@ func TestReprovisionError(t *testing.T) {
 	client := newTestClient(server.URL)
 
 	req := &ReprovisionRequest{
-		Email:   "test@example.com",
-		Owner:   "testuser",
-		Tag:     "4.17",
-		Version: "nightly",
+		Email:             "test@example.com",
+		Owner:             "testuser",
+		Tag:               "4.17",
+		Version:           "nightly",
+		VirtualWorkers:    "true",
+		AdditionalWorkers: "false",
 	}
 
 	if err := client.Reprovision(testEnv, req); err == nil {
