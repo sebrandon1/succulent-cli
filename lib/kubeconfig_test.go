@@ -303,6 +303,95 @@ func TestWaitForClusterReadyControlPlaneOnly(t *testing.T) {
 	}
 }
 
+func TestWaitForClusterReadyErrorState(t *testing.T) {
+	html := fmt.Sprintf(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>%s</td><td>client1</td><td>2026-06-25</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>%s-installer</td><td>up</td><td>%s</td></tr>
+<tr><td>%s-master-0</td><td>error</td><td>192.168.1.101</td></tr>
+</table></body></html>`, testEnv, testEnv, testInstallerIP, testEnv)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(html))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
+	if err == nil {
+		t.Fatal("Expected error for error state, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "permanent error") {
+		t.Errorf("Expected 'permanent error' in message, got: %v", err)
+	}
+
+	if !strings.Contains(err.Error(), "master-0") {
+		t.Errorf("Expected node name in error, got: %v", err)
+	}
+}
+
+func TestWaitForClusterReadyTimeoutNoNodeStates(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, false)
+	if err == nil {
+		t.Fatal("Expected timeout error, got nil")
+	}
+
+	if strings.Contains(err.Error(), "last state:") {
+		t.Errorf("Expected no 'last state:' when loop never ran, got: %v", err)
+	}
+}
+
+func TestHasErrorState(t *testing.T) {
+	tests := []struct {
+		name      string
+		nodes     []NodeInfo
+		wantError bool
+	}{
+		{"all up", []NodeInfo{{Name: "n1", Status: "up"}}, false},
+		{"all down", []NodeInfo{{Name: "n1", Status: "down"}}, false},
+		{"error state", []NodeInfo{{Name: "n1", Status: "error"}}, true},
+		{"failed state", []NodeInfo{{Name: "n1", Status: "failed"}}, true},
+		{"unreachable state", []NodeInfo{{Name: "n1", Status: "unreachable"}}, true},
+		{"mixed with error", []NodeInfo{{Name: "n1", Status: "up"}, {Name: "n2", Status: "error"}}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, _ := hasErrorState(tt.nodes)
+			if got != tt.wantError {
+				t.Errorf("hasErrorState() = %v, want %v", got, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestParseNodeRowErrorStatus(t *testing.T) {
+	for _, status := range []string{"error", "failed", "unreachable"} {
+		t.Run(status, func(t *testing.T) {
+			node := parseNodeRow("test-node", status, []string{"test-node", status, "192.168.1.1"})
+			if node == nil {
+				t.Fatalf("Expected node for status %q, got nil", status)
+			}
+
+			if node.Status != status {
+				t.Errorf("Expected status %q, got %q", status, node.Status)
+			}
+		})
+	}
+}
+
 func TestWaitForClusterReadyControlPlaneOnlyMasterDown(t *testing.T) {
 	html := fmt.Sprintf(`<html><body><table>
 <tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
