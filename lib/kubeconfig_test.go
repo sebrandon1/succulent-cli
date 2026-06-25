@@ -9,6 +9,71 @@ import (
 	"testing"
 )
 
+func TestValidateKubeconfig(t *testing.T) {
+	tests := []struct {
+		name    string
+		data    []byte
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "valid kubeconfig",
+			data: []byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n"),
+		},
+		{
+			name:    "empty data",
+			data:    []byte{},
+			wantErr: true,
+			errMsg:  "empty",
+		},
+		{
+			name:    "HTML error page",
+			data:    []byte("<html><body>404 Not Found</body></html>"),
+			wantErr: true,
+			errMsg:  "not valid YAML",
+		},
+		{
+			name:    "valid YAML but wrong kind",
+			data:    []byte("apiVersion: v1\nkind: Secret\nclusters: []\ncontexts: []\nusers: []\n"),
+			wantErr: true,
+			errMsg:  "unexpected kind",
+		},
+		{
+			name:    "missing kind",
+			data:    []byte("apiVersion: v1\nclusters: []\ncontexts: []\nusers: []\n"),
+			wantErr: true,
+			errMsg:  "unexpected kind",
+		},
+		{
+			name:    "missing clusters key",
+			data:    []byte("apiVersion: v1\nkind: Config\ncontexts: []\nusers: []\n"),
+			wantErr: true,
+			errMsg:  "missing required key: clusters",
+		},
+		{
+			name:    "missing users key",
+			data:    []byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\n"),
+			wantErr: true,
+			errMsg:  "missing required key: users",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateKubeconfig(tt.data)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateKubeconfig() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr && err != nil && tt.errMsg != "" {
+				if !strings.Contains(err.Error(), tt.errMsg) {
+					t.Errorf("Expected error containing %q, got: %v", tt.errMsg, err)
+				}
+			}
+		})
+	}
+}
+
 func TestValidateIP(t *testing.T) {
 	tests := []struct {
 		name    string
