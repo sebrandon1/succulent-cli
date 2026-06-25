@@ -34,7 +34,7 @@ var hsProvisionCmd = &cobra.Command{
 	Long:  `Submit a Hypershift provisioning request for the specified environment.`,
 	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17 --confirm
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2 --confirm`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmHS {
 			return fmt.Errorf("--confirm is required to provision a Hypershift cluster")
 		}
@@ -57,7 +57,7 @@ var hsProvisionCmd = &cobra.Command{
 			ImageOverride:  hsImageOverride,
 		}
 
-		if err := sharedClient.ProvisionHypershift(envName, &req); err != nil {
+		if err := sharedClient.ProvisionHypershift(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting Hypershift provision request: %w", err)
 		}
 
@@ -74,8 +74,8 @@ var hsKubeconfigCmd = &cobra.Command{
 	Short: "Download the Hypershift kubeconfig",
 	Example: `  succulent-cli hypershift kubeconfig --env myenv --choice management
   succulent-cli hypershift kubeconfig --env myenv --choice hosted`,
-	RunE: func(_ *cobra.Command, _ []string) error {
-		data, err := sharedClient.GetHypershiftKubeconfig(envName, hsKCChoice)
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		data, err := sharedClient.GetHypershiftKubeconfig(cmd.Context(), envName, hsKCChoice)
 		if err != nil {
 			return fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
 		}

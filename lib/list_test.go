@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -49,7 +50,7 @@ func TestListEnvironments(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(context.Background())
 	if err != nil {
 		t.Fatalf("ListEnvironments failed: %v", err)
 	}
@@ -91,7 +92,7 @@ func TestListEnvironmentsNoDuplicates(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(context.Background())
 	if err != nil {
 		t.Fatalf("ListEnvironments failed: %v", err)
 	}
@@ -110,7 +111,7 @@ func TestListEnvironmentsEmpty(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	envs, err := client.ListEnvironments()
+	envs, err := client.ListEnvironments(context.Background())
 	if err != nil {
 		t.Fatalf("ListEnvironments failed: %v", err)
 	}
@@ -129,7 +130,7 @@ func TestListEnvironmentsServerError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.ListEnvironments()
+	_, err := client.ListEnvironments(context.Background())
 	if err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
@@ -210,7 +211,7 @@ func TestListEnvironmentsWithInfo(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	details, err := client.ListEnvironmentsWithInfo(5, nil)
+	details, err := client.ListEnvironmentsWithInfo(context.Background(), 5, nil)
 	if err != nil {
 		t.Fatalf("ListEnvironmentsWithInfo failed: %v", err)
 	}

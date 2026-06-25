@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net"
@@ -77,19 +78,30 @@ func isClusterReady(nodes []NodeInfo, controlPlaneOnly bool) bool {
 	return true
 }
 
-func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSeconds int, w io.Writer, controlPlaneOnly bool) (string, error) {
+func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMinutes, pollIntervalSeconds int, w io.Writer, controlPlaneOnly bool) (string, error) {
 	deadline := time.Now().Add(time.Duration(maxWaitMinutes) * time.Minute)
 	interval := time.Duration(pollIntervalSeconds) * time.Second
 	attempt := 0
 
 	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+
 		attempt++
 		fmt.Fprintf(w, "[Attempt %d] Checking node status for %s...\n", attempt, env)
 
-		info, err := c.GetInfoPlan(env)
+		info, err := c.GetInfoPlan(ctx, env)
 		if err != nil {
 			fmt.Fprintf(w, "  Warning: %v\n", err)
-			time.Sleep(interval)
+
+			select {
+			case <-ctx.Done():
+				return "", ctx.Err()
+			case <-time.After(interval):
+			}
 
 			continue
 		}
@@ -117,7 +129,12 @@ func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSec
 		}
 
 		fmt.Fprintf(w, "  Waiting %d seconds...\n", pollIntervalSeconds)
-		time.Sleep(interval)
+
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-time.After(interval):
+		}
 	}
 
 	return "", fmt.Errorf("cluster not ready after %d minutes", maxWaitMinutes)

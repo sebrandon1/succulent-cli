@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -61,7 +62,7 @@ func TestReprovision(t *testing.T) {
 		Version: "nightly",
 	}
 
-	if err := client.Reprovision(testEnv, req); err != nil {
+	if err := client.Reprovision(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("Reprovision failed: %v", err)
 	}
 }
@@ -100,7 +101,7 @@ func TestReprovisionWithOptionalFields(t *testing.T) {
 		AdditionalWorkers: "cnfdt56,cnfdr98",
 	}
 
-	if err := client.Reprovision(testEnv, req); err != nil {
+	if err := client.Reprovision(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("Reprovision failed: %v", err)
 	}
 }
@@ -121,7 +122,7 @@ func TestReprovisionError(t *testing.T) {
 		Version: "nightly",
 	}
 
-	if err := client.Reprovision(testEnv, req); err == nil {
+	if err := client.Reprovision(context.Background(), testEnv, req); err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
 }
@@ -158,7 +159,7 @@ func TestReprovisionAllOptionalFields(t *testing.T) {
 		KcliParams:        "disconnected:False",
 	}
 
-	if err := client.Reprovision(testEnv, req); err != nil {
+	if err := client.Reprovision(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("Reprovision failed: %v", err)
 	}
 }

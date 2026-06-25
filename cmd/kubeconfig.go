@@ -24,21 +24,21 @@ host keys, and SCP the kubeconfig to a local path.`,
 	Example: `  succulent-cli kubeconfig fetch --env myenv
   succulent-cli kubeconfig fetch --env myenv --wait
   succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		user := viper.GetString("remote_user")
 		path := viper.GetString("remote_path")
 
 		var installerIP string
 
 		if waitForReady {
-			ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stdout, controlPlaneOnly)
+			ip, err := sharedClient.WaitForClusterReady(cmd.Context(), envName, maxWaitMinutes, pollIntervalSecs, os.Stdout, controlPlaneOnly)
 			if err != nil {
 				return fmt.Errorf("waiting for cluster: %w", err)
 			}
 
 			installerIP = ip
 		} else {
-			info, err := sharedClient.GetInfoPlan(envName)
+			info, err := sharedClient.GetInfoPlan(cmd.Context(), envName)
 			if err != nil {
 				return fmt.Errorf("fetching cluster info: %w", err)
 			}

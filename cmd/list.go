@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sort"
@@ -27,17 +28,19 @@ var listCmd = &cobra.Command{
   succulent-cli list --no-detail
   succulent-cli list --no-cache
   succulent-cli list --output json`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		ctx := cmd.Context()
+
 		if listNoDetail {
-			return listBasic()
+			return listBasic(ctx)
 		}
 
-		return listDetailed()
+		return listDetailed(ctx)
 	},
 }
 
-func listBasic() error {
-	envs, err := sharedClient.ListEnvironments()
+func listBasic(ctx context.Context) error {
+	envs, err := sharedClient.ListEnvironments(ctx)
 	if err != nil {
 		return fmt.Errorf("listing environments: %w", err)
 	}
@@ -61,7 +64,7 @@ func listBasic() error {
 	return w.Flush()
 }
 
-func listDetailed() error {
+func listDetailed(ctx context.Context) error {
 	var cache *lib.Cache
 	if !listNoCache && sharedCache != nil {
 		cache = sharedCache
@@ -69,7 +72,7 @@ func listDetailed() error {
 
 	fmt.Fprintf(os.Stderr, "Fetching info for all environments (concurrency: %d)...\n", listConcurrency)
 
-	details, err := sharedClient.ListEnvironmentsWithInfo(listConcurrency, cache)
+	details, err := sharedClient.ListEnvironmentsWithInfo(ctx, listConcurrency, cache)
 	if err != nil {
 		return fmt.Errorf("listing environments: %w", err)
 	}

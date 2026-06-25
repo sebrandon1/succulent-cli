@@ -1,24 +1,25 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"io"
 )
 
-func (c *Client) ProvisionSNO(env string, req *SNOProvisionRequest) error {
+func (c *Client) ProvisionSNO(ctx context.Context, env string, req *SNOProvisionRequest) error {
 	endpoint := fmt.Sprintf("%s"+endpointSNOProvision, c.BaseURL, env)
 
-	if err := c.postForm(endpoint, req.FormValues()); err != nil {
+	if err := c.postForm(ctx, endpoint, req.FormValues()); err != nil {
 		return fmt.Errorf("failed to provision SNO on %s: %w", env, err)
 	}
 
 	return nil
 }
 
-func (c *Client) GetSNOKubeconfig(env string) ([]byte, error) {
+func (c *Client) GetSNOKubeconfig(ctx context.Context, env string) ([]byte, error) {
 	requestURL := fmt.Sprintf("%s"+endpointSNOKubeconfig, c.BaseURL, env)
 
-	resp, err := c.getRaw(requestURL)
+	resp, err := c.getRaw(ctx, requestURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch SNO kubeconfig for %s: %w", env, err)
 	}

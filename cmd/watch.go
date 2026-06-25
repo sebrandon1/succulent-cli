@@ -17,12 +17,12 @@ Use --control-plane-only to report ready once the installer and masters are up, 
 	Example: `  succulent-cli watch --env myenv
   succulent-cli watch --env myenv --control-plane-only
   succulent-cli watch --env myenv --max-wait 90 --poll-interval 15`,
-	RunE: func(_ *cobra.Command, _ []string) error {
+	RunE: func(cmd *cobra.Command, _ []string) error {
 		if pollIntervalSecs < minPollIntervalSecs {
 			return fmt.Errorf("--poll-interval must be at least %d seconds", minPollIntervalSecs)
 		}
 
-		ip, err := sharedClient.WaitForClusterReady(envName, maxWaitMinutes, pollIntervalSecs, os.Stderr, controlPlaneOnly)
+		ip, err := sharedClient.WaitForClusterReady(cmd.Context(), envName, maxWaitMinutes, pollIntervalSecs, os.Stderr, controlPlaneOnly)
 		if err != nil {
 			return fmt.Errorf("watching cluster: %w", err)
 		}

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
@@ -66,10 +67,16 @@ func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Cli
 	}, nil
 }
 
-func (c *Client) doWithRetry(newReq func() (*http.Request, error)) (*http.Response, error) {
+func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {
 	var lastErr error
 
 	for attempt := range c.MaxRetries {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
 		req, err := newReq()
 		if err != nil {
 			return nil, err
@@ -110,9 +117,9 @@ func (c *Client) sleepWithJitter(attempt int) {
 	time.Sleep(delay + time.Duration(n.Int64()))
 }
 
-func (c *Client) getRaw(requestURL string) (*http.Response, error) {
-	resp, err := c.doWithRetry(func() (*http.Request, error) {
-		return http.NewRequest("GET", requestURL, nil)
+func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response, error) {
+	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
+		return http.NewRequestWithContext(ctx, "GET", requestURL, nil)
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%w (check --url and --verify-ssl settings)", err)
@@ -128,11 +135,11 @@ func (c *Client) getRaw(requestURL string) (*http.Response, error) {
 	return resp, nil
 }
 
-func (c *Client) postForm(endpoint string, data url.Values) error {
+func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values) error {
 	encoded := data.Encode()
 
-	resp, err := c.doWithRetry(func() (*http.Request, error) {
-		req, err := http.NewRequest("POST", endpoint, strings.NewReader(encoded))
+	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(encoded))
 		if err != nil {
 			return nil, err
 		}
@@ -158,11 +165,11 @@ func (c *Client) postForm(endpoint string, data url.Values) error {
 
 // postFormRaw submits a form and returns the raw response body.
 // Used for endpoints that return binary data (e.g., kubeconfig files).
-func (c *Client) postFormRaw(endpoint string, data url.Values) ([]byte, error) {
+func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Values) ([]byte, error) {
 	encoded := data.Encode()
 
-	resp, err := c.doWithRetry(func() (*http.Request, error) {
-		req, err := http.NewRequest("POST", endpoint, strings.NewReader(encoded))
+	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
+		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(encoded))
 		if err != nil {
 			return nil, err
 		}

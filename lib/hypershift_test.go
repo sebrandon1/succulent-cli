@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -51,7 +52,7 @@ func TestProvisionHypershift(t *testing.T) {
 		HCPRelease: "nightly",
 	}
 
-	if err := client.ProvisionHypershift(testEnv, req); err != nil {
+	if err := client.ProvisionHypershift(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionHypershift failed: %v", err)
 	}
 }
@@ -67,7 +68,7 @@ func TestProvisionHypershiftError(t *testing.T) {
 
 	req := &HypershiftRequest{Owner: "testuser", Email: "test@example.com"}
 
-	if err := client.ProvisionHypershift(testEnv, req); err == nil {
+	if err := client.ProvisionHypershift(context.Background(), testEnv, req); err == nil {
 		t.Fatal("Expected error for 500 response, got nil")
 	}
 }
@@ -103,7 +104,7 @@ func TestGetHypershiftKubeconfig(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	data, err := client.GetHypershiftKubeconfig(testEnv, "management")
+	data, err := client.GetHypershiftKubeconfig(context.Background(), testEnv, "management")
 	if err != nil {
 		t.Fatalf("GetHypershiftKubeconfig failed: %v", err)
 	}
@@ -122,7 +123,7 @@ func TestGetHypershiftKubeconfigError(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.GetHypershiftKubeconfig(testEnv, "management")
+	_, err := client.GetHypershiftKubeconfig(context.Background(), testEnv, "management")
 	if err == nil {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
@@ -169,7 +170,7 @@ func TestProvisionHypershiftAllFields(t *testing.T) {
 		ImageOverride:  "quay.io/test/image:latest",
 	}
 
-	if err := client.ProvisionHypershift(testEnv, req); err != nil {
+	if err := client.ProvisionHypershift(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionHypershift failed: %v", err)
 	}
 }

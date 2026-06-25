@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"regexp"
@@ -11,10 +12,10 @@ import (
 
 var ipRegex = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
 
-func (c *Client) GetInfoPlan(env string) (*ClusterInfo, error) {
+func (c *Client) GetInfoPlan(ctx context.Context, env string) (*ClusterInfo, error) {
 	requestURL := fmt.Sprintf("%s"+endpointInfoPlan, c.BaseURL, env)
 
-	resp, err := c.getRaw(requestURL)
+	resp, err := c.getRaw(ctx, requestURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch infoplan for %s: %w", env, err)
 	}
