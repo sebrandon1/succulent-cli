@@ -218,7 +218,7 @@ func TestSNOProvisionCommandNoConfirm(t *testing.T) {
 func TestSNOKubeconfigCommand(t *testing.T) {
 	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("apiVersion: v1\nkind: Config\n"))
+		w.Write([]byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n"))
 	})
 	defer cleanup()
 
@@ -260,7 +260,7 @@ func TestHypershiftProvisionCommandNoConfirm(t *testing.T) {
 func TestHypershiftKubeconfigCommand(t *testing.T) {
 	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("apiVersion: v1\nkind: Config\n"))
+		w.Write([]byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n"))
 	})
 	defer cleanup()
 
@@ -298,7 +298,7 @@ func TestZTPProvisionCommandNoConfirm(t *testing.T) {
 func TestZTPKubeconfigCommand(t *testing.T) {
 	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("apiVersion: v1\nkind: Config\n"))
+		w.Write([]byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n"))
 	})
 	defer cleanup()
 

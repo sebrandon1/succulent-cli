@@ -8,7 +8,33 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"go.yaml.in/yaml/v3"
 )
+
+func ValidateKubeconfig(data []byte) error {
+	if len(data) == 0 {
+		return fmt.Errorf("kubeconfig data is empty")
+	}
+
+	var config map[string]interface{}
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		return fmt.Errorf("kubeconfig is not valid YAML: %w", err)
+	}
+
+	kind, _ := config["kind"].(string)
+	if kind != "Config" {
+		return fmt.Errorf("kubeconfig has unexpected kind: %q (expected \"Config\")", kind)
+	}
+
+	for _, key := range []string{"apiVersion", "clusters", "contexts", "users"} {
+		if _, ok := config[key]; !ok {
+			return fmt.Errorf("kubeconfig missing required key: %s", key)
+		}
+	}
+
+	return nil
+}
 
 func validateIP(ip string) error {
 	if net.ParseIP(ip) == nil {
@@ -60,6 +86,15 @@ func FetchKubeconfig(ip, user, remotePath, destPath string) error {
 
 	if err := os.Chmod(destPath, 0o600); err != nil {
 		return fmt.Errorf("failed to set file permissions: %w", err)
+	}
+
+	data, err := os.ReadFile(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to read downloaded kubeconfig: %w", err)
+	}
+
+	if err := ValidateKubeconfig(data); err != nil {
+		return fmt.Errorf("downloaded kubeconfig is invalid: %w", err)
 	}
 
 	return nil

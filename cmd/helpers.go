@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/viper"
 )
 
@@ -64,6 +65,10 @@ func saveKubeconfig(data []byte, dest, env, suffix string) (string, error) {
 		}
 
 		dest = d
+	}
+
+	if err := lib.ValidateKubeconfig(data); err != nil {
+		return "", fmt.Errorf("invalid kubeconfig data: %w", err)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(dest), 0o750); err != nil {

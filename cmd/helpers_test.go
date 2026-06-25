@@ -95,12 +95,13 @@ func TestResolveOwnerEmail(t *testing.T) {
 }
 
 func TestSaveKubeconfig(t *testing.T) {
+	validKubeconfig := []byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n")
+
 	t.Run("with explicit dest", func(t *testing.T) {
 		dir := t.TempDir()
 		dest := filepath.Join(dir, "subdir", "kubeconfig")
-		content := []byte("apiVersion: v1\nkind: Config")
 
-		got, err := saveKubeconfig(content, dest, "myenv", "suffix")
+		got, err := saveKubeconfig(validKubeconfig, dest, "myenv", "suffix")
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
@@ -114,13 +115,13 @@ func TestSaveKubeconfig(t *testing.T) {
 			t.Fatalf("Expected file to exist: %v", err)
 		}
 
-		if string(data) != string(content) {
-			t.Errorf("Expected content %q, got %q", content, data)
+		if string(data) != string(validKubeconfig) {
+			t.Errorf("Expected content %q, got %q", validKubeconfig, data)
 		}
 	})
 
 	t.Run("with default dest", func(t *testing.T) {
-		got, err := saveKubeconfig([]byte("data"), "", "myenv", "test-kubeconfig")
+		got, err := saveKubeconfig(validKubeconfig, "", "myenv", "test-kubeconfig")
 		if err != nil {
 			t.Fatalf("Expected no error, got %v", err)
 		}
@@ -130,6 +131,20 @@ func TestSaveKubeconfig(t *testing.T) {
 		}
 
 		_ = os.Remove(got)
+	})
+
+	t.Run("invalid kubeconfig rejected", func(t *testing.T) {
+		dir := t.TempDir()
+		dest := filepath.Join(dir, "bad-kubeconfig")
+
+		_, err := saveKubeconfig([]byte("<html>error</html>"), dest, "myenv", "suffix")
+		if err == nil {
+			t.Fatal("Expected error for invalid kubeconfig, got nil")
+		}
+
+		if _, statErr := os.Stat(dest); !os.IsNotExist(statErr) {
+			t.Error("Invalid kubeconfig should not have been written to disk")
+		}
 	})
 }
 
