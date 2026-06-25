@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -65,6 +66,16 @@ func FetchKubeconfig(ip, user, remotePath, destPath string) error {
 	return nil
 }
 
+func hasErrorState(nodes []NodeInfo) (bool, string) {
+	for _, node := range nodes {
+		if errorStatuses[node.Status] {
+			return true, fmt.Sprintf("node %s is in %s state", node.Name, node.Status)
+		}
+	}
+
+	return false, ""
+}
+
 func isClusterReady(nodes []NodeInfo, controlPlaneOnly bool) bool {
 	for _, node := range nodes {
 		if node.Status != StatusUp {
@@ -82,6 +93,8 @@ func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSec
 	interval := time.Duration(pollIntervalSeconds) * time.Second
 	attempt := 0
 
+	var lastNodes []NodeInfo
+
 	for time.Now().Before(deadline) {
 		attempt++
 		fmt.Fprintf(w, "[Attempt %d] Checking node status for %s...\n", attempt, env)
@@ -92,6 +105,12 @@ func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSec
 			time.Sleep(interval)
 
 			continue
+		}
+
+		lastNodes = info.Nodes
+
+		if errored, msg := hasErrorState(info.Nodes); errored {
+			return "", fmt.Errorf("cluster has permanent error: %s", msg)
 		}
 
 		if info.InstallerIP != "" {
@@ -118,6 +137,15 @@ func (c *Client) WaitForClusterReady(env string, maxWaitMinutes, pollIntervalSec
 
 		fmt.Fprintf(w, "  Waiting %d seconds...\n", pollIntervalSeconds)
 		time.Sleep(interval)
+	}
+
+	var nodeStates []string
+	for _, node := range lastNodes {
+		nodeStates = append(nodeStates, fmt.Sprintf("%s=%s", node.Name, node.Status))
+	}
+
+	if len(nodeStates) > 0 {
+		return "", fmt.Errorf("cluster not ready after %d minutes; last state: %s", maxWaitMinutes, strings.Join(nodeStates, ", "))
 	}
 
 	return "", fmt.Errorf("cluster not ready after %d minutes", maxWaitMinutes)

@@ -3,8 +3,11 @@ package lib
 import "net/url"
 
 const (
-	StatusUp   = "up"
-	StatusDown = "down"
+	StatusUp          = "up"
+	StatusDown        = "down"
+	StatusError       = "error"
+	StatusFailed      = "failed"
+	StatusUnreachable = "unreachable"
 
 	NodeTypeInstaller = "installer"
 	NodeTypeMaster    = "master"

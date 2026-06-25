@@ -9,7 +9,15 @@ import (
 	"golang.org/x/net/html"
 )
 
-var ipRegex = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
+var (
+	ipRegex = regexp.MustCompile(`\b(?:\d{1,3}\.){3}\d{1,3}\b`)
+
+	errorStatuses = map[string]bool{
+		StatusError:       true,
+		StatusFailed:      true,
+		StatusUnreachable: true,
+	}
+)
 
 func (c *Client) GetInfoPlan(env string) (*ClusterInfo, error) {
 	requestURL := fmt.Sprintf("%s"+endpointInfoPlan, c.BaseURL, env)
@@ -85,7 +93,7 @@ func parseInfoPlan(env string, r io.Reader) (*ClusterInfo, error) {
 
 func parseNodeRow(name, status string, cells []string) *NodeInfo {
 	statusLower := strings.ToLower(status)
-	if statusLower != StatusUp && statusLower != StatusDown {
+	if statusLower != StatusUp && statusLower != StatusDown && !errorStatuses[statusLower] {
 		return nil
 	}
 
