@@ -353,3 +353,129 @@ func TestConfigInitCommand(t *testing.T) {
 		t.Fatalf("Expected config file at %s, got error: %v", configPath, err)
 	}
 }
+
+func serverErrorHandler(w http.ResponseWriter, _ *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte("internal server error"))
+}
+
+func TestInfoCommandServerError(t *testing.T) {
+	cleanup := setupTestServer(serverErrorHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"get", "info", "--env", "testenv", "--no-cache"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error for server 500, got nil")
+	}
+}
+
+func TestLogCommandServerError(t *testing.T) {
+	cleanup := setupTestServer(serverErrorHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"get", "log", "--env", "testenv"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error for server 500, got nil")
+	}
+}
+
+func TestDeleteCommandServerError(t *testing.T) {
+	cleanup := setupTestServer(serverErrorHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"delete", "--env", "testenv", "--confirm"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error for server 500, got nil")
+	}
+}
+
+func TestReprovisionCommandServerError(t *testing.T) {
+	cleanup := setupTestServer(serverErrorHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--ocp-tag", "4.17", "--confirm"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error for server 500, got nil")
+	}
+}
+
+func TestSNOProvisionCommandServerError(t *testing.T) {
+	cleanup := setupTestServer(serverErrorHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"sno", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--ocp-tag", "4.17", "--confirm"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error for server 500, got nil")
+	}
+}
+
+func TestInfoCommandEmptyHTML(t *testing.T) {
+	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("<html><body><p>no table here</p></body></html>"))
+	})
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"get", "info", "--env", "testenv"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected graceful handling of empty HTML, got error: %v", err)
+	}
+}
+
+func TestListCommandServerError(t *testing.T) {
+	cleanup := setupTestServer(serverErrorHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"list", "--env", "testenv", "--no-detail"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected error for server 500, got nil")
+	}
+}
+
+func TestWatchCommandTimeout(t *testing.T) {
+	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>testenv</td><td>client1</td><td>2026-05-27</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>testenv-installer</td><td>down</td><td></td></tr>
+</table></body></html>`))
+	})
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"watch", "--env", "testenv", "--max-wait", "0", "--poll-interval", "5"})
+
+	if err := rootCmd.Execute(); err == nil {
+		t.Fatal("Expected timeout error, got nil")
+	}
+}
+
+func TestReprovisionCommandJSON(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--ocp-tag", "4.17", "--confirm", "--output", "json"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected no error with --output json, got %v", err)
+	}
+}
+
+func TestDeleteCommandJSON(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"delete", "--env", "testenv", "--confirm", "--output", "json"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected no error with --output json, got %v", err)
+	}
+}
