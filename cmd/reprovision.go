@@ -75,7 +75,7 @@ func init() {
 	reprovisionCmd.Flags().StringVar(&reprovOpenshiftImage, "openshift-image", "", "Full OpenShift image URL")
 	reprovisionCmd.Flags().StringVar(&reprovDiskSize, "disk-size", "50", "Disk size in GB")
 	reprovisionCmd.Flags().StringVar(&reprovVirtualWorkers, "virtual-workers", "true", "Enable virtual workers")
-	reprovisionCmd.Flags().StringVar(&reprovAddlWorkers, "additional-workers", "", "Comma-separated extra baremetal worker names")
+	reprovisionCmd.Flags().StringVar(&reprovAddlWorkers, "additional-workers", "false", "Additional baremetal workers (false to disable, or comma-separated hostnames)")
 	reprovisionCmd.Flags().StringVar(&reprovEndDate, "end-date", "", "End date for the environment")
 	reprovisionCmd.Flags().StringVar(&reprovKcliParams, "kcli-params", "", "Additional kcli parameters (key:value format)")
 
