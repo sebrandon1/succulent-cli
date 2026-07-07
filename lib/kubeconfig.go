@@ -124,6 +124,32 @@ func isClusterReady(nodes []NodeInfo, controlPlaneOnly bool) bool {
 	return true
 }
 
+func handlePollError(ctx context.Context, w io.Writer, err error, interval time.Duration) error {
+	fmt.Fprintf(w, "  Warning: %v\n", err)
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(interval):
+		return nil
+	}
+}
+
+func printControlPlaneNotes(nodes []NodeInfo, w io.Writer) {
+	for _, node := range nodes {
+		if node.Status != StatusUp {
+			fmt.Fprintf(w, "  Note: %s still %s\n", node.Name, node.Status)
+		}
+	}
+}
+
+func printNodeStatuses(nodes []NodeInfo, pollIntervalSeconds int, w io.Writer) {
+	for _, node := range nodes {
+		fmt.Fprintf(w, "  %s: %s (%s)\n", node.Name, node.Status, node.IP)
+	}
+	fmt.Fprintf(w, "  Waiting %d seconds...\n", pollIntervalSeconds)
+}
+
 func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMinutes, pollIntervalSeconds int, w io.Writer, controlPlaneOnly bool) (string, error) {
 	deadline := time.Now().Add(time.Duration(maxWaitMinutes) * time.Minute)
 	interval := time.Duration(pollIntervalSeconds) * time.Second
@@ -143,14 +169,9 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 
 		info, err := c.GetInfoPlan(ctx, env)
 		if err != nil {
-			fmt.Fprintf(w, "  Warning: %v\n", err)
-
-			select {
-			case <-ctx.Done():
-				return "", ctx.Err()
-			case <-time.After(interval):
+			if ctxErr := handlePollError(ctx, w, err, interval); ctxErr != nil {
+				return "", ctxErr
 			}
-
 			continue
 		}
 
@@ -166,23 +187,13 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 			if ready {
 				fmt.Fprintf(w, "Cluster ready. Installer IP: %s\n", info.InstallerIP)
 
-				if controlPlaneOnly {
-					for _, node := range info.Nodes {
-						if node.Status != StatusUp {
-							fmt.Fprintf(w, "  Note: %s still %s\n", node.Name, node.Status)
-						}
-					}
-				}
+				printControlPlaneNotes(info.Nodes, w)
 
 				return info.InstallerIP, nil
 			}
 		}
 
-		for _, node := range info.Nodes {
-			fmt.Fprintf(w, "  %s: %s (%s)\n", node.Name, node.Status, node.IP)
-		}
-
-		fmt.Fprintf(w, "  Waiting %d seconds...\n", pollIntervalSeconds)
+		printNodeStatuses(info.Nodes, pollIntervalSeconds, w)
 
 		select {
 		case <-ctx.Done():

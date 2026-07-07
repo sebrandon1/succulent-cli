@@ -322,7 +322,7 @@ func TestWaitForClusterReadyErrorState(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.WaitForClusterReady(testEnv, 1, 1, io.Discard, false)
+	_, err := client.WaitForClusterReady(context.Background(), testEnv, 1, 1, io.Discard, false)
 	if err == nil {
 		t.Fatal("Expected error for error state, got nil")
 	}
@@ -345,7 +345,7 @@ func TestWaitForClusterReadyTimeoutNoNodeStates(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.WaitForClusterReady(testEnv, 0, 1, io.Discard, false)
+	_, err := client.WaitForClusterReady(context.Background(), testEnv, 0, 1, io.Discard, false)
 	if err == nil {
 		t.Fatal("Expected timeout error, got nil")
 	}
