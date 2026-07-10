@@ -32,9 +32,14 @@ type Client struct {
 	HTTPClient     *http.Client
 	MaxRetries     int
 	RetryBaseDelay time.Duration
+	Timeout        time.Duration
 }
 
 func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Client, error) {
+	return NewClientWithTimeout(baseURL, insecureSkipVerify, caCertPath, 60*time.Second)
+}
+
+func NewClientWithTimeout(baseURL string, insecureSkipVerify bool, caCertPath string, timeout time.Duration) (*Client, error) {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: insecureSkipVerify, //nolint:gosec
 	}
@@ -68,12 +73,30 @@ func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Cli
 	return &Client{
 		BaseURL: baseURL,
 		HTTPClient: &http.Client{
-			Timeout:   60 * time.Second,
+			Timeout:   timeout,
 			Transport: transport,
 		},
 		MaxRetries:     3,
 		RetryBaseDelay: 1 * time.Second,
+		Timeout:        timeout,
 	}, nil
+}
+
+// WithTimeout returns a shallow copy of the client with a different timeout
+func (c *Client) WithTimeout(timeout time.Duration) *Client {
+	// Create new HTTP client with different timeout
+	newHTTPClient := &http.Client{
+		Transport: c.HTTPClient.Transport,
+		Timeout:   timeout,
+	}
+
+	return &Client{
+		BaseURL:        c.BaseURL,
+		HTTPClient:     newHTTPClient,
+		MaxRetries:     c.MaxRetries,
+		RetryBaseDelay: c.RetryBaseDelay,
+		Timeout:        timeout,
+	}
 }
 
 func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {

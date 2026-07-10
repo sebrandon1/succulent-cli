@@ -18,6 +18,7 @@ var (
 	verifySSL        bool
 	caCertPath       string
 	outputFormat     string
+	httpTimeout      int
 	sharedClient     *lib.Client
 	sharedCache      *lib.Cache
 	maxWaitMinutes   int
@@ -43,7 +44,7 @@ kubeconfig retrieval, and environment deletion.`,
 
 		var err error
 
-		sharedClient, err = lib.NewClient(succulentURL, !verifySSL, caCertPath)
+		sharedClient, err = lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
 		if err != nil {
 			return err
 		}
@@ -140,6 +141,8 @@ func init() {
 		"Path to CA certificate bundle (PEM format)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table",
 		"Output format (json or table)")
+	rootCmd.PersistentFlags().IntVar(&httpTimeout, "timeout", 60,
+		"HTTP request timeout in seconds")
 
 	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
 	_ = viper.BindPFlag("env", rootCmd.PersistentFlags().Lookup("env"))
