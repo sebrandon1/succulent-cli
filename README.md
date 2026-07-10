@@ -34,6 +34,7 @@ succulent-cli sno kubeconfig --env myenv               # Download kubeconfig
 | `config show` | Show the resolved configuration |
 | `config init` | Create a default config file |
 | `config path` | Print the config file path |
+| `version` | Print the CLI version |
 
 ## Guides
 
@@ -45,6 +46,7 @@ succulent-cli sno kubeconfig --env myenv               # Download kubeconfig
 
 ## Prerequisites
 
+- Go 1.26+ (for building from source)
 - VPN connection to the succulent service network
 - Valid credentials for authenticated endpoints
 
