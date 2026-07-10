@@ -16,7 +16,13 @@ import (
 	"time"
 )
 
-const DefaultSucculentURL = "https://succulent.eng.redhat.com"
+const (
+	DefaultSucculentURL = "https://succulent.eng.redhat.com"
+
+	// Size limits for response body reads to prevent memory exhaustion
+	maxKubeconfigSize = 10 * 1024 * 1024 // 10MB for kubeconfig/binary data
+	maxErrorBodySize  = 4096             // 4KB for error messages
+)
 
 type Client struct {
 	BaseURL        string
@@ -94,7 +100,7 @@ func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, 
 		}
 
 		if resp.StatusCode >= 500 {
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+			body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
 			_ = resp.Body.Close()
 			lastErr = fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
 
@@ -126,7 +132,7 @@ func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response,
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
 		_ = resp.Body.Close()
 
 		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
@@ -155,7 +161,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated &&
 		resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
 
 		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
 	}
@@ -183,17 +189,17 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 	defer resp.Body.Close()
 
-	// Limit response size to prevent memory exhaustion (10MB for kubeconfig data)
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 10*1024*1024))
+	// Limit response size to prevent memory exhaustion
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxKubeconfigSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		// For errors, limit output to 4KB
+		// For errors, limit output size
 		errorBody := body
-		if len(errorBody) > 4096 {
-			errorBody = errorBody[:4096]
+		if len(errorBody) > maxErrorBodySize {
+			errorBody = errorBody[:maxErrorBodySize]
 		}
 
 		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(errorBody))
