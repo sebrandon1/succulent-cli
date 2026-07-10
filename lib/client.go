@@ -21,7 +21,10 @@ const (
 
 	// Size limits for response body reads to prevent memory exhaustion
 	maxKubeconfigSize = 10 * 1024 * 1024 // 10MB for kubeconfig/binary data
-	maxErrorBodySize  = 4096             // 4KB for error messages
+
+	// Error message hints for common troubleshooting
+	errHintCheckSettings = "check --url and --verify-ssl settings"
+	errHintServerLogs    = "check server logs for details"
 )
 
 type Client struct {
@@ -100,9 +103,8 @@ func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, 
 		}
 
 		if resp.StatusCode >= 500 {
-			body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
 			_ = resp.Body.Close()
-			lastErr = fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+			lastErr = fmt.Errorf("server error: status code %d (%s)", resp.StatusCode, errHintServerLogs)
 
 			if attempt < c.MaxRetries-1 {
 				c.sleepWithJitter(attempt)
@@ -132,10 +134,9 @@ func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response,
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
 		_ = resp.Body.Close()
 
-		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("unexpected status code: %d (%s)", resp.StatusCode, errHintCheckSettings)
 	}
 
 	return resp, nil
@@ -161,9 +162,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated &&
 		resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxErrorBodySize))
-
-		return fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(body))
+		return fmt.Errorf("unexpected status code: %d (%s)", resp.StatusCode, errHintCheckSettings)
 	}
 
 	return nil
@@ -196,13 +195,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		// For errors, limit output size
-		errorBody := body
-		if len(errorBody) > maxErrorBodySize {
-			errorBody = errorBody[:maxErrorBodySize]
-		}
-
-		return nil, fmt.Errorf("unexpected status code: %d, response: %s", resp.StatusCode, string(errorBody))
+		return nil, fmt.Errorf("unexpected status code: %d (%s)", resp.StatusCode, errHintCheckSettings)
 	}
 
 	return body, nil
