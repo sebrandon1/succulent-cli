@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
@@ -62,7 +63,9 @@ var reprovisionCmd = &cobra.Command{
 			KcliParams:        reprovKcliParams,
 		}
 
-		if err := sharedClient.Reprovision(cmd.Context(), envName, &req); err != nil {
+		// Reprovision can take several minutes, use 5-minute timeout
+		client := sharedClient.WithTimeout(5 * time.Minute)
+		if err := client.Reprovision(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting reprovision request: %w", err)
 		}
 
