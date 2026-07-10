@@ -19,6 +19,10 @@ var (
 	reprovAddlWorkers    string
 	reprovEndDate        string
 	reprovKcliParams     string
+
+	// Deprecated flag variables
+	reprovTagDeprecated     string
+	reprovVersionDeprecated string
 )
 
 var reprovisionCmd = &cobra.Command{
@@ -30,6 +34,14 @@ var reprovisionCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmReprovision {
 			return fmt.Errorf("--confirm is required to reprovision an environment")
+		}
+
+		// Prefer new flags, fall back to deprecated if new flags not set
+		if reprovTag == "" && reprovTagDeprecated != "" {
+			reprovTag = reprovTagDeprecated
+		}
+		if reprovVersion == "nightly" && reprovVersionDeprecated != "nightly" {
+			reprovVersion = reprovVersionDeprecated
 		}
 
 		owner, email, err := resolveOwnerEmail(reprovOwner, reprovEmail)
@@ -66,9 +78,9 @@ func init() {
 	reprovisionCmd.Flags().StringVar(&reprovEmail, "email", "", "Email address for notifications")
 	reprovisionCmd.Flags().StringVar(&reprovOwner, "owner", "", "Username (owner)")
 	reprovisionCmd.Flags().StringVar(&reprovTag, "ocp-tag", "", "OCP version tag (e.g., 4.17, 4.18)")
-	reprovisionCmd.Flags().StringVar(&reprovTag, "tag", "", "OCP version tag (deprecated: use --ocp-tag)")
+	reprovisionCmd.Flags().StringVar(&reprovTagDeprecated, "tag", "", "OCP version tag (deprecated: use --ocp-tag)")
 	reprovisionCmd.Flags().StringVar(&reprovVersion, "release-type", "nightly", "Release type (e.g., nightly, ci)")
-	reprovisionCmd.Flags().StringVar(&reprovVersion, "version", "nightly", "Release type (deprecated: use --release-type)")
+	reprovisionCmd.Flags().StringVar(&reprovVersionDeprecated, "version", "nightly", "Release type (deprecated: use --release-type)")
 
 	_ = reprovisionCmd.Flags().MarkDeprecated("tag", "use --ocp-tag instead")
 	_ = reprovisionCmd.Flags().MarkDeprecated("version", "use --release-type instead")
