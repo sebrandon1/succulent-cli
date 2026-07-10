@@ -25,7 +25,7 @@ func (c *Client) GetSNOKubeconfig(ctx context.Context, env string) ([]byte, erro
 	}
 	defer resp.Body.Close()
 
-	data, err := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxKubeconfigSize))
 	if err != nil {
 		return nil, fmt.Errorf("failed to read kubeconfig response: %w", err)
 	}
