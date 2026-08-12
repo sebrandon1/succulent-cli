@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestNewClient(t *testing.T) {
@@ -292,6 +293,54 @@ func TestHumanizeBytes(t *testing.T) {
 				t.Errorf("humanizeBytes(%d) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestWithTimeout(t *testing.T) {
+	client, err := NewClient("https://example.com", true, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	newClient := client.WithTimeout(120 * time.Second)
+
+	if newClient.Timeout != 120*time.Second {
+		t.Errorf("Expected 120s timeout, got %v", newClient.Timeout)
+	}
+
+	if newClient.HTTPClient.Timeout != 120*time.Second {
+		t.Errorf("Expected HTTPClient timeout 120s, got %v", newClient.HTTPClient.Timeout)
+	}
+
+	if newClient.BaseURL != client.BaseURL {
+		t.Errorf("Expected same BaseURL, got %s", newClient.BaseURL)
+	}
+
+	if newClient.MaxRetries != client.MaxRetries {
+		t.Errorf("Expected same MaxRetries, got %d", newClient.MaxRetries)
+	}
+
+	if client.Timeout != 60*time.Second {
+		t.Error("Original client timeout should be unchanged")
+	}
+}
+
+func TestPostFormRawNon2xx(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("some error body"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.postFormRaw(context.Background(), server.URL+"/test", nil)
+	if err == nil {
+		t.Fatal("Expected error for 400 response, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "bad request") {
+		t.Errorf("Expected friendly error message, got: %v", err)
 	}
 }
 
