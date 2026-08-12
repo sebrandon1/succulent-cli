@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -211,7 +212,7 @@ func TestListEnvironmentsWithInfo(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	details, err := client.ListEnvironmentsWithInfo(context.Background(), 5, nil)
+	details, err := client.ListEnvironmentsWithInfo(context.Background(), 5, nil, io.Discard)
 	if err != nil {
 		t.Fatalf("ListEnvironmentsWithInfo failed: %v", err)
 	}

@@ -77,9 +77,7 @@ func listDetailed(ctx context.Context) error {
 		cache = sharedCache
 	}
 
-	fmt.Fprintf(os.Stderr, "Fetching info for all environments (concurrency: %d)...\n", listConcurrency)
-
-	details, err := sharedClient.ListEnvironmentsWithInfo(ctx, listConcurrency, cache)
+	details, err := sharedClient.ListEnvironmentsWithInfo(ctx, listConcurrency, cache, os.Stderr)
 	if err != nil {
 		return fmt.Errorf("listing environments: %w", err)
 	}
