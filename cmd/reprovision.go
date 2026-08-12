@@ -36,7 +36,7 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.18 --release-type ci --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmReprovision {
-			return fmt.Errorf("--confirm is required to reprovision an environment")
+			return fmt.Errorf("--confirm is required to reprovision an environment (use --dry-run to preview)")
 		}
 
 		// Prefer new flags, fall back to deprecated if new flags not set
@@ -68,7 +68,7 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 		// Reprovision can take several minutes, use 5-minute timeout
 		client := sharedClient.WithTimeout(5 * time.Minute)
 		if err := client.Reprovision(cmd.Context(), envName, &req); err != nil {
-			return fmt.Errorf("submitting reprovision request: %w", err)
+			return fmt.Errorf("submitting reprovision request: %w; verify env exists with: succulent-cli list", err)
 		}
 
 		return printResult(CommandResult{

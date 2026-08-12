@@ -33,7 +33,7 @@ If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignor
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmSNO {
-			return fmt.Errorf("--confirm is required to provision an SNO cluster")
+			return fmt.Errorf("--confirm is required to provision an SNO cluster (use --dry-run to preview)")
 		}
 
 		owner, email, err := resolveOwnerEmail(snoOwner, snoEmail)
@@ -51,7 +51,7 @@ If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignor
 		}
 
 		if err := sharedClient.ProvisionSNO(cmd.Context(), envName, &req); err != nil {
-			return fmt.Errorf("submitting SNO provision request: %w", err)
+			return fmt.Errorf("submitting SNO provision request: %w; verify env exists with: succulent-cli list", err)
 		}
 
 		return printResult(CommandResult{

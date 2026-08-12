@@ -44,7 +44,7 @@ Full tags override their corresponding short tag + release type flags.`,
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmHS {
-			return fmt.Errorf("--confirm is required to provision a Hypershift cluster")
+			return fmt.Errorf("--confirm is required to provision a Hypershift cluster (use --dry-run to preview)")
 		}
 
 		owner, email, err := resolveOwnerEmail(hsOwner, hsEmail)
@@ -66,7 +66,7 @@ Full tags override their corresponding short tag + release type flags.`,
 		}
 
 		if err := sharedClient.ProvisionHypershift(cmd.Context(), envName, &req); err != nil {
-			return fmt.Errorf("submitting Hypershift provision request: %w", err)
+			return fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
 		}
 
 		return printResult(CommandResult{

@@ -15,7 +15,7 @@ var deleteCmd = &cobra.Command{
 	Example: `  succulent-cli delete --env myenv --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmDelete {
-			return fmt.Errorf("--confirm is required to delete an environment")
+			return fmt.Errorf("--confirm is required to delete an environment (use --dry-run to preview)")
 		}
 
 		if err := sharedClient.DeleteEnvironment(cmd.Context(), envName); err != nil {
