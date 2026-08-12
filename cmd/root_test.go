@@ -159,6 +159,37 @@ func TestSkipEnvValidationForRegularCommand(t *testing.T) {
 	}
 }
 
+func TestValidEnvName(t *testing.T) {
+	tests := []struct {
+		name  string
+		env   string
+		valid bool
+	}{
+		{"simple", "cnfdt16", true},
+		{"with hyphens", "my-env-01", true},
+		{"with underscores", "env_test_1", true},
+		{"uppercase", "ENV01", true},
+		{"mixed case", "CnfDt16", true},
+		{"empty", "", false},
+		{"starts with hyphen", "-env", false},
+		{"starts with underscore", "_env", false},
+		{"spaces", "my env", false},
+		{"special chars", "env@1", false},
+		{"path traversal", "../etc", false},
+		{"slash", "env/name", false},
+		{"semicolon injection", "env;rm", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := validEnvName.MatchString(tt.env)
+			if got != tt.valid {
+				t.Errorf("validEnvName.MatchString(%q) = %v, want %v", tt.env, got, tt.valid)
+			}
+		})
+	}
+}
+
 func TestSNOSubcommands(t *testing.T) {
 	subcommands := snoCmd.Commands()
 
