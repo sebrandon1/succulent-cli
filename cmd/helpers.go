@@ -88,5 +88,5 @@ func defaultDestPath(env, suffix string) (string, error) {
 		return "", fmt.Errorf("failed to determine home directory: %w", err)
 	}
 
-	return filepath.Join(home, defaultDestDir, env+"-"+suffix), nil
+	return filepath.Join(home, defaultDestDir, "succulent", env, suffix), nil
 }

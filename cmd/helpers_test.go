@@ -23,8 +23,8 @@ func TestDefaultDestPath(t *testing.T) {
 		t.Fatalf("Expected no error, got %v", err)
 	}
 
-	if !strings.HasSuffix(path, "Downloads/myenv-kubeconfig") {
-		t.Errorf("Expected path ending with Downloads/myenv-kubeconfig, got %s", path)
+	if !strings.HasSuffix(path, filepath.Join("Downloads", "succulent", "myenv", "kubeconfig")) {
+		t.Errorf("Expected path ending with Downloads/succulent/myenv/kubeconfig, got %s", path)
 	}
 }
 
@@ -126,8 +126,8 @@ func TestSaveKubeconfig(t *testing.T) {
 			t.Fatalf("Expected no error, got %v", err)
 		}
 
-		if !strings.HasSuffix(got, "Downloads/myenv-test-kubeconfig") {
-			t.Errorf("Expected path ending with Downloads/myenv-test-kubeconfig, got %s", got)
+		if !strings.HasSuffix(got, filepath.Join("Downloads", "succulent", "myenv", "test-kubeconfig")) {
+			t.Errorf("Expected path ending with Downloads/succulent/myenv/test-kubeconfig, got %s", got)
 		}
 
 		_ = os.Remove(got)
