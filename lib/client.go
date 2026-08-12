@@ -25,6 +25,7 @@ const (
 	// Error message hints for common troubleshooting
 	errHintCheckSettings = "check --url and --verify-ssl settings"
 	errHintServerLogs    = "check server logs for details"
+	errHintTruncated     = "(truncated at %s; response may be incomplete)"
 )
 
 type Client struct {
@@ -211,8 +212,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 	defer resp.Body.Close()
 
-	// Limit response size to prevent memory exhaustion
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxKubeconfigSize))
+	body, err := readLimited(resp.Body, maxKubeconfigSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -222,4 +222,30 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 
 	return body, nil
+}
+
+func readLimited(r io.Reader, limit int64) ([]byte, error) {
+	data, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+
+	if int64(len(data)) > limit {
+		return nil, fmt.Errorf("response exceeded %s limit %s",
+			humanizeBytes(limit),
+			fmt.Sprintf(errHintTruncated, humanizeBytes(limit)))
+	}
+
+	return data, nil
+}
+
+func humanizeBytes(b int64) string {
+	switch {
+	case b >= 1024*1024:
+		return fmt.Sprintf("%dMB", b/(1024*1024))
+	case b >= 1024:
+		return fmt.Sprintf("%dKB", b/1024)
+	default:
+		return fmt.Sprintf("%d bytes", b)
+	}
 }
