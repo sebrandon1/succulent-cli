@@ -57,6 +57,10 @@ Full tags override their corresponding short tag + release type flags.`,
 			}
 		}
 
+		if err := validateNumericFlag(hsVMWorkers, "vm-workers"); err != nil {
+			return err
+		}
+
 		owner, email, err := resolveOwnerEmail(hsOwner, hsEmail)
 		if err != nil {
 			return err

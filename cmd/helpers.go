@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
+	"strings"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/viper"
@@ -59,7 +61,19 @@ func resolveOwnerEmail(owner, email string) (string, string, error) {
 		return "", "", fmt.Errorf("--email is required (or set default_email in config); try: succulent-cli config init")
 	}
 
+	if !strings.Contains(email, "@") {
+		return "", "", fmt.Errorf("invalid email %q: must contain @ (e.g., user@example.com)", email)
+	}
+
 	return owner, email, nil
+}
+
+func validateNumericFlag(value, flagName string) error {
+	if _, err := strconv.Atoi(value); err != nil {
+		return fmt.Errorf("--%s must be a number, got %q", flagName, value)
+	}
+
+	return nil
 }
 
 func saveKubeconfig(data []byte, dest, env, suffix string) (string, error) {

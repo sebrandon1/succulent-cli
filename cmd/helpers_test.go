@@ -201,3 +201,36 @@ func TestValidateOCPTag(t *testing.T) {
 		})
 	}
 }
+
+func TestResolveOwnerEmailValidation(t *testing.T) {
+	_, _, err := resolveOwnerEmail("user", "not-an-email")
+	if err == nil {
+		t.Fatal("Expected error for email without @")
+	}
+
+	if !strings.Contains(err.Error(), "must contain @") {
+		t.Errorf("Expected 'must contain @' in error, got: %v", err)
+	}
+}
+
+func TestValidateNumericFlag(t *testing.T) {
+	tests := []struct {
+		value   string
+		wantErr bool
+	}{
+		{"50", false},
+		{"0", false},
+		{"abc", true},
+		{"3.5", true},
+		{"", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.value, func(t *testing.T) {
+			err := validateNumericFlag(tt.value, "test-flag")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateNumericFlag(%q) error = %v, wantErr %v", tt.value, err, tt.wantErr)
+			}
+		})
+	}
+}
