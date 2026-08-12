@@ -115,13 +115,105 @@ func TestRemoveSSHHostKeyInvalidIP(t *testing.T) {
 }
 
 func TestFetchKubeconfigInvalidIP(t *testing.T) {
-	err := FetchKubeconfig("not-an-ip", "root", "/path", "/dest")
-	if err == nil {
-		t.Fatal("Expected error for invalid IP")
+	for _, password := range []string{"", "secret"} {
+		name := "no password"
+		if password != "" {
+			name = "with password"
+		}
+
+		t.Run(name, func(t *testing.T) {
+			err := FetchKubeconfig("not-an-ip", "root", password, "/path", "/dest")
+			if err == nil {
+				t.Fatal("Expected error for invalid IP")
+			}
+
+			if !strings.Contains(err.Error(), "invalid IP address") {
+				t.Errorf("Expected 'invalid IP address' error, got: %v", err)
+			}
+		})
+	}
+}
+
+func assertArgPresent(t *testing.T, args []string, want string) {
+	t.Helper()
+
+	for _, arg := range args {
+		if arg == want {
+			return
+		}
 	}
 
-	if !strings.Contains(err.Error(), "invalid IP address") {
-		t.Errorf("Expected 'invalid IP address' error, got: %v", err)
+	t.Errorf("Expected %q in args: %v", want, args)
+}
+
+func assertEnvContains(t *testing.T, env []string, want string) {
+	t.Helper()
+
+	for _, e := range env {
+		if e == want {
+			return
+		}
+	}
+
+	t.Errorf("Expected %q in env", want)
+}
+
+func TestBuildSCPCommand(t *testing.T) {
+	tests := []struct {
+		name        string
+		ip          string
+		user        string
+		password    string
+		remotePath  string
+		destPath    string
+		wantBinary  string
+		wantSSHPASS bool
+	}{
+		{
+			name:       "without password uses scp directly",
+			ip:         "192.168.1.100",
+			user:       "root",
+			remotePath: "/root/ocp/auth/kubeconfig",
+			destPath:   "/tmp/kubeconfig",
+			wantBinary: "scp",
+		},
+		{
+			name:        "with password uses sshpass",
+			ip:          "192.168.1.100",
+			user:        "root",
+			password:    "secret123",
+			remotePath:  "/root/ocp/auth/kubeconfig",
+			destPath:    "/tmp/kubeconfig",
+			wantBinary:  "sshpass",
+			wantSSHPASS: true,
+		},
+		{
+			name:       "custom user without password",
+			ip:         "10.0.0.1",
+			user:       "kni",
+			remotePath: "/home/kni/kubeconfig",
+			destPath:   "/tmp/kc",
+			wantBinary: "scp",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cmd := buildSCPCommand(tt.ip, tt.user, tt.password, tt.remotePath, tt.destPath)
+
+			if cmd.Args[0] != tt.wantBinary {
+				t.Errorf("Expected binary %q, got %q", tt.wantBinary, cmd.Args[0])
+			}
+
+			remote := fmt.Sprintf("%s@%s:%s", tt.user, tt.ip, tt.remotePath)
+			assertArgPresent(t, cmd.Args, remote)
+			assertArgPresent(t, cmd.Args, "StrictHostKeyChecking=no")
+
+			if tt.wantSSHPASS {
+				assertEnvContains(t, cmd.Env, "SSHPASS="+tt.password)
+				assertArgPresent(t, cmd.Args, "-e")
+			}
+		})
 	}
 }
 

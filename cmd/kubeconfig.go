@@ -10,10 +10,11 @@ import (
 )
 
 var (
-	remoteUser   string
-	remotePath   string
-	destPath     string
-	waitForReady bool
+	remoteUser     string
+	remotePassword string
+	remotePath     string
+	destPath       string
+	waitForReady   bool
 )
 
 var fetchKubeconfigCmd = &cobra.Command{
@@ -26,6 +27,7 @@ host keys, and SCP the kubeconfig to a local path.`,
   succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		user := viper.GetString("remote_user")
+		password := viper.GetString("remote_password")
 		path := viper.GetString("remote_path")
 
 		var installerIP string
@@ -64,7 +66,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 			fmt.Printf("Warning: could not remove SSH host key: %v\n", err)
 		}
 
-		if err := lib.FetchKubeconfig(installerIP, user, path, dest); err != nil {
+		if err := lib.FetchKubeconfig(installerIP, user, password, path, dest); err != nil {
 			return fmt.Errorf("fetching kubeconfig: %w", err)
 		}
 
@@ -76,6 +78,7 @@ host keys, and SCP the kubeconfig to a local path.`,
 
 func init() {
 	fetchKubeconfigCmd.Flags().StringVar(&remoteUser, "user", defaultRemoteUser, "Remote SSH user")
+	fetchKubeconfigCmd.Flags().StringVar(&remotePassword, "password", "", "SSH password (requires sshpass)")
 	fetchKubeconfigCmd.Flags().StringVar(&remotePath, "path", defaultRemotePath, "Remote kubeconfig path")
 	fetchKubeconfigCmd.Flags().StringVar(&destPath, "dest", "", "Local destination path (default: ~/Downloads/{env}-kubeconfig)")
 	fetchKubeconfigCmd.Flags().BoolVar(&waitForReady, "wait", false, "Wait for cluster nodes to be up before fetching")
@@ -84,5 +87,6 @@ func init() {
 	fetchKubeconfigCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks when waiting")
 
 	_ = viper.BindPFlag("remote_user", fetchKubeconfigCmd.Flags().Lookup("user"))
+	_ = viper.BindPFlag("remote_password", fetchKubeconfigCmd.Flags().Lookup("password"))
 	_ = viper.BindPFlag("remote_path", fetchKubeconfigCmd.Flags().Lookup("path"))
 }
