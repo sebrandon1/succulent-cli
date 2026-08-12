@@ -28,6 +28,31 @@ const (
 	errHintTruncated     = "(truncated at %s; response may be incomplete)"
 )
 
+func friendlyHTTPError(statusCode int) string {
+	switch statusCode {
+	case 400:
+		return "bad request: the server rejected the input; check flag values"
+	case 401, 403:
+		return "access denied: check credentials and permissions"
+	case 404:
+		return "not found: verify --env name exists (try: succulent-cli list)"
+	case 405:
+		return "method not allowed: CLI may be out of date (try: make install)"
+	case 409:
+		return "conflict: environment may already be provisioned or in use"
+	case 422:
+		return "invalid parameters: check flag values and required fields"
+	case 500:
+		return "internal server error (" + errHintServerLogs + ")"
+	case 502, 503:
+		return "server unavailable: try again in a few minutes"
+	case 504:
+		return "server timeout: operation may still be running; check status with 'get info'"
+	default:
+		return fmt.Sprintf("HTTP %d (%s)", statusCode, errHintCheckSettings)
+	}
+}
+
 type Client struct {
 	BaseURL        string
 	HTTPClient     *http.Client
@@ -160,7 +185,7 @@ func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response,
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
 
-		return nil, fmt.Errorf("unexpected status code: %d (%s)", resp.StatusCode, errHintCheckSettings)
+		return nil, fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
 	}
 
 	return resp, nil
@@ -186,7 +211,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated &&
 		resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
-		return fmt.Errorf("unexpected status code: %d (%s)", resp.StatusCode, errHintCheckSettings)
+		return fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
 	}
 
 	return nil
@@ -218,7 +243,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("unexpected status code: %d (%s)", resp.StatusCode, errHintCheckSettings)
+		return nil, fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
 	}
 
 	return body, nil
