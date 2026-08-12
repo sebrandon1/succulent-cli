@@ -294,3 +294,32 @@ func TestHumanizeBytes(t *testing.T) {
 		})
 	}
 }
+
+func TestFriendlyHTTPError(t *testing.T) {
+	tests := []struct {
+		code     int
+		contains string
+	}{
+		{400, "bad request"},
+		{401, "access denied"},
+		{403, "access denied"},
+		{404, "not found"},
+		{405, "out of date"},
+		{409, "conflict"},
+		{422, "invalid parameters"},
+		{500, "internal server error"},
+		{502, "unavailable"},
+		{503, "unavailable"},
+		{504, "timeout"},
+		{418, "HTTP 418"},
+	}
+
+	for _, tt := range tests {
+		t.Run(strings.ReplaceAll(tt.contains, " ", "-"), func(t *testing.T) {
+			got := friendlyHTTPError(tt.code)
+			if !strings.Contains(got, tt.contains) {
+				t.Errorf("friendlyHTTPError(%d) = %q, want substring %q", tt.code, got, tt.contains)
+			}
+		})
+	}
+}
