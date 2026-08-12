@@ -116,6 +116,34 @@ func buildSCPCommand(ip, user, password, remotePath, destPath string) *exec.Cmd 
 	return exec.Command("scp", scpArgs...) //nolint:gosec
 }
 
+func formatNodeSummary(nodes []NodeInfo) string {
+	var up, down []string
+
+	for _, node := range nodes {
+		entry := node.Name
+		if node.IP != "" {
+			entry += " (" + node.IP + ")"
+		}
+
+		if node.Status == StatusUp {
+			up = append(up, entry)
+		} else {
+			down = append(down, fmt.Sprintf("%s [%s]", entry, node.Status))
+		}
+	}
+
+	var parts []string
+	if len(down) > 0 {
+		parts = append(parts, fmt.Sprintf("  Nodes not ready (%d):\n    - %s", len(down), strings.Join(down, "\n    - ")))
+	}
+
+	if len(up) > 0 {
+		parts = append(parts, fmt.Sprintf("  Nodes up (%d):\n    - %s", len(up), strings.Join(up, "\n    - ")))
+	}
+
+	return strings.Join(parts, "\n")
+}
+
 func hasErrorState(nodes []NodeInfo) (bool, string) {
 	for _, node := range nodes {
 		if errorStatuses[node.Status] {
@@ -216,14 +244,9 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 		}
 	}
 
-	var nodeStates []string
-	for _, node := range lastNodes {
-		nodeStates = append(nodeStates, fmt.Sprintf("%s=%s", node.Name, node.Status))
+	if len(lastNodes) > 0 {
+		return "", fmt.Errorf("cluster not ready after %d minutes:\n%s", maxWaitMinutes, formatNodeSummary(lastNodes))
 	}
 
-	if len(nodeStates) > 0 {
-		return "", fmt.Errorf("cluster not ready after %d minutes; last state: %s", maxWaitMinutes, strings.Join(nodeStates, ", "))
-	}
-
-	return "", fmt.Errorf("cluster not ready after %d minutes", maxWaitMinutes)
+	return "", fmt.Errorf("cluster not ready after %d minutes (no node data received)", maxWaitMinutes)
 }
