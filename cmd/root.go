@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var validEnvName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
 
 var (
 	succulentURL     string
@@ -59,6 +62,10 @@ kubeconfig retrieval, and environment deletion.`,
 
 		if envName == "" {
 			return fmt.Errorf("--env is required (set via flag, SUCCULENT_ENV env var, or config file at %s/config.yaml)", configDir())
+		}
+
+		if !validEnvName.MatchString(envName) {
+			return fmt.Errorf("invalid environment name %q: must be alphanumeric with hyphens or underscores (e.g., cnfdt16, my-env-01)", envName)
 		}
 
 		return nil
