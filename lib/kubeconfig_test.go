@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestValidateKubeconfig(t *testing.T) {
@@ -468,6 +470,61 @@ func TestHasErrorState(t *testing.T) {
 				t.Errorf("hasErrorState() = %v, want %v", got, tt.wantError)
 			}
 		})
+	}
+}
+
+func TestHandlePollError(t *testing.T) {
+	t.Run("normal returns nil", func(t *testing.T) {
+		var buf bytes.Buffer
+		err := handlePollError(context.Background(), &buf, fmt.Errorf("some error"), 1*time.Millisecond)
+		if err != nil {
+			t.Fatalf("Expected nil error, got %v", err)
+		}
+
+		if !strings.Contains(buf.String(), "some error") {
+			t.Errorf("Expected warning message in output, got: %s", buf.String())
+		}
+	})
+
+	t.Run("canceled context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		var buf bytes.Buffer
+		err := handlePollError(ctx, &buf, fmt.Errorf("some error"), 10*time.Second)
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("Expected context.Canceled, got: %v", err)
+		}
+	})
+}
+
+func TestClassifyNodeType(t *testing.T) {
+	tests := []struct {
+		name     string
+		nodeName string
+		want     string
+	}{
+		{"installer", "env-installer", NodeTypeInstaller},
+		{"master", "env-master-0", NodeTypeMaster},
+		{"bootstrap", "env-bootstrap", NodeTypeBootstrap},
+		{"worker", "env-worker-0", NodeTypeWorker},
+		{"unknown defaults to worker", "env-something", NodeTypeWorker},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := classifyNodeType(tt.nodeName)
+			if got != tt.want {
+				t.Errorf("classifyNodeType(%q) = %q, want %q", tt.nodeName, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseNodeRowUnrecognizedStatus(t *testing.T) {
+	node := parseNodeRow("test-node", "provisioning", []string{"test-node", "provisioning", "192.168.1.1"})
+	if node != nil {
+		t.Errorf("Expected nil for unrecognized status 'provisioning', got %+v", node)
 	}
 }
 

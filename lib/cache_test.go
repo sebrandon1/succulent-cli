@@ -117,6 +117,31 @@ func TestCacheEmptyDir(t *testing.T) {
 	}
 }
 
+func TestCacheCorruptJSON(t *testing.T) {
+	dir := t.TempDir()
+	cache := NewCache(dir, 60*time.Second)
+
+	if err := os.WriteFile(filepath.Join(dir, "cache.json"), []byte("{not valid json}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := cache.GetInfo("anything")
+	if ok {
+		t.Fatal("Expected cache miss for corrupt JSON, got hit")
+	}
+
+	cache.SetInfo("testenv", &ClusterInfo{Environment: "testenv"})
+
+	got, ok := cache.GetInfo("testenv")
+	if !ok {
+		t.Fatal("Expected cache hit after set, got miss")
+	}
+
+	if got.Environment != "testenv" {
+		t.Errorf("Expected environment 'testenv', got %s", got.Environment)
+	}
+}
+
 func TestCacheSaveFailureLogsWarning(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "readonly")
 	if err := os.MkdirAll(dir, 0o750); err != nil {

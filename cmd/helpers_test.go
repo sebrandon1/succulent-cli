@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sebrandon1/succulent-cli/lib"
 )
 
 func TestPrintJSON(t *testing.T) {
@@ -210,6 +212,98 @@ func TestResolveOwnerEmailValidation(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "must contain @") {
 		t.Errorf("Expected 'must contain @' in error, got: %v", err)
+	}
+}
+
+func TestFilterDetails(t *testing.T) {
+	details := []lib.EnvironmentDetail{
+		{Name: "env1", Status: "active", Group: "Lab-A", Owner: "alice"},
+		{Name: "env2", Status: "partial", Group: "Lab-B", Owner: "bob"},
+		{Name: "env3", Status: "active", Group: "Lab-A", Owner: "carol"},
+	}
+
+	tests := []struct {
+		name      string
+		filter    string
+		wantCount int
+		wantErr   string
+	}{
+		{"filter by status", "status=active", 2, ""},
+		{"filter by name", "name=env2", 1, ""},
+		{"filter by group", "group=Lab-A", 2, ""},
+		{"filter by owner", "owner=bob", 1, ""},
+		{"case insensitive match", "STATUS=Active", 2, ""},
+		{"no match", "name=nonexistent", 0, ""},
+		{"invalid format no equals", "noequalssign", 0, "invalid filter format"},
+		{"unknown key", "foo=bar", 0, "unknown filter key"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := filterDetails(details, tt.filter)
+			if tt.wantErr != "" {
+				if err == nil {
+					t.Fatalf("Expected error containing %q, got nil", tt.wantErr)
+				}
+
+				if !strings.Contains(err.Error(), tt.wantErr) {
+					t.Errorf("Expected error containing %q, got: %v", tt.wantErr, err)
+				}
+
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Expected no error, got %v", err)
+			}
+
+			if len(result) != tt.wantCount {
+				t.Errorf("Expected %d results, got %d", tt.wantCount, len(result))
+			}
+		})
+	}
+}
+
+func TestSortDetails(t *testing.T) {
+	makeDetails := func() []lib.EnvironmentDetail {
+		return []lib.EnvironmentDetail{
+			{Name: "charlie", Status: "partial", Group: "Lab-B", NodesUp: 1},
+			{Name: "alpha", Status: "active", Group: "Lab-A", NodesUp: 5},
+			{Name: "bravo", Status: "empty", Group: "Lab-C", NodesUp: 3},
+		}
+	}
+
+	tests := []struct {
+		sortBy    string
+		wantFirst string
+	}{
+		{"name", "alpha"},
+		{"status", "active"},
+		{"group", "Lab-A"},
+		{"nodes-up", "alpha"},
+		{"unknown", "alpha"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.sortBy, func(t *testing.T) {
+			d := makeDetails()
+			sortDetails(d, tt.sortBy)
+
+			var got string
+
+			switch tt.sortBy {
+			case "group":
+				got = d[0].Group
+			case "status":
+				got = d[0].Status
+			default:
+				got = d[0].Name
+			}
+
+			if got != tt.wantFirst {
+				t.Errorf("sortDetails(%q): first element = %q, want %q", tt.sortBy, got, tt.wantFirst)
+			}
+		})
 	}
 }
 
