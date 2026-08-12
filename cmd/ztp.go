@@ -52,6 +52,15 @@ Full tags override their corresponding short tag + release type flags.`,
 			return fmt.Errorf("--confirm is required to provision a ZTP cluster")
 		}
 
+		for _, v := range []struct{ tag, flag string }{
+			{ztpSNOTag, "--sno-tag"}, {ztpSNOFullTag, "--sno-full-tag"},
+			{ztpSpokeTag, "--spoke-tag"}, {ztpSpokeFullTag, "--spoke-full-tag"},
+		} {
+			if err := validateOCPTag(v.tag, v.flag); err != nil {
+				return err
+			}
+		}
+
 		owner, email, err := resolveOwnerEmail(ztpOwner, ztpEmail)
 		if err != nil {
 			return err

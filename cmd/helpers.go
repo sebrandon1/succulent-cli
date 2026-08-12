@@ -6,11 +6,14 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/viper"
 )
+
+var validOCPTag = regexp.MustCompile(`^\d+\.\d+(\.\d+(-[\w.-]+)?)?$`)
 
 type CommandResult struct {
 	Status      string `json:"status"`
@@ -112,4 +115,16 @@ func printDryRun(action, env string, data url.Values) {
 	for _, k := range keys {
 		fmt.Printf("  %s = %s\n", k, data.Get(k))
 	}
+}
+
+func validateOCPTag(tag, flagName string) error {
+	if tag == "" {
+		return nil
+	}
+
+	if !validOCPTag.MatchString(tag) {
+		return fmt.Errorf("invalid %s %q: expected format like 4.17, 5.0, or 4.17.0-0.nightly-2026-05-20-123456", flagName, tag)
+	}
+
+	return nil
 }

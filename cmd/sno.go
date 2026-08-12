@@ -37,6 +37,14 @@ If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignor
 			return fmt.Errorf("--confirm is required to provision an SNO cluster")
 		}
 
+		if err := validateOCPTag(snoOCPTag, "--ocp-tag"); err != nil {
+			return err
+		}
+
+		if err := validateOCPTag(snoFullTag, "--full-ocp-tag"); err != nil {
+			return err
+		}
+
 		owner, email, err := resolveOwnerEmail(snoOwner, snoEmail)
 		if err != nil {
 			return err
