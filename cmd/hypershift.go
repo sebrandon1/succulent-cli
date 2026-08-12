@@ -48,6 +48,15 @@ Full tags override their corresponding short tag + release type flags.`,
 			return fmt.Errorf("--confirm is required to provision a Hypershift cluster")
 		}
 
+		for _, v := range []struct{ tag, flag string }{
+			{hsSNOTag, "--sno-tag"}, {hsSNOFullTag, "--sno-full-tag"},
+			{hsHCPTag, "--hcp-tag"}, {hsHCPFullTag, "--hcp-full-tag"},
+		} {
+			if err := validateOCPTag(v.tag, v.flag); err != nil {
+				return err
+			}
+		}
+
 		owner, email, err := resolveOwnerEmail(hsOwner, hsEmail)
 		if err != nil {
 			return err

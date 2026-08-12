@@ -173,3 +173,31 @@ func TestPrintDryRun(t *testing.T) {
 		printDryRun("delete", "myenv", nil)
 	})
 }
+
+func TestValidateOCPTag(t *testing.T) {
+	tests := []struct {
+		tag     string
+		wantErr bool
+	}{
+		{"", false},
+		{"4.17", false},
+		{"5.0", false},
+		{"4.17.0", false},
+		{"4.17.0-0.nightly-2026-05-20-123456", false},
+		{"4.15.0-rc.1", false},
+		{"latest", true},
+		{"nightly", true},
+		{"4.17.0.0", true},
+		{"abc", true},
+		{"4", true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.tag, func(t *testing.T) {
+			err := validateOCPTag(tt.tag, "--ocp-tag")
+			if (err != nil) != tt.wantErr {
+				t.Errorf("validateOCPTag(%q) error = %v, wantErr %v", tt.tag, err, tt.wantErr)
+			}
+		})
+	}
+}
