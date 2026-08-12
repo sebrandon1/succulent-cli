@@ -31,7 +31,15 @@ var hypershiftCmd = &cobra.Command{
 var hsProvisionCmd = &cobra.Command{
 	Use:   cmdNameProvision,
 	Short: "Provision a Hypershift hosted cluster",
-	Long:  `Submit a Hypershift provisioning request for the specified environment.`,
+	Long: `Submit a Hypershift provisioning request for the specified environment.
+
+Version flags for management and hosted clusters (use one approach per cluster):
+  --sno-tag + --sno-release     Short tag with release type for the management (SNO) cluster
+  --sno-full-tag                Exact build tag for the management cluster
+  --hcp-tag + --hcp-release     Short tag with release type for the hosted cluster
+  --hcp-full-tag                Exact build tag for the hosted cluster
+
+Full tags override their corresponding short tag + release type flags.`,
 	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17 --confirm
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -94,12 +102,12 @@ var hsKubeconfigCmd = &cobra.Command{
 func init() {
 	hsProvisionCmd.Flags().StringVar(&hsOwner, "owner", "", "Username (owner)")
 	hsProvisionCmd.Flags().StringVar(&hsEmail, "email", "", "Email address for notifications")
-	hsProvisionCmd.Flags().StringVar(&hsSNOTag, "sno-tag", "", "Management cluster OCP tag (e.g., 4.17)")
-	hsProvisionCmd.Flags().StringVar(&hsSNORelease, "sno-release", "nightly", "Management cluster release type")
-	hsProvisionCmd.Flags().StringVar(&hsSNOFullTag, "sno-full-tag", "", "Management cluster full OCP tag")
-	hsProvisionCmd.Flags().StringVar(&hsHCPTag, "hcp-tag", "", "Hosted cluster OCP tag (e.g., 4.17)")
-	hsProvisionCmd.Flags().StringVar(&hsHCPRelease, "hcp-release", "nightly", "Hosted cluster release type")
-	hsProvisionCmd.Flags().StringVar(&hsHCPFullTag, "hcp-full-tag", "", "Hosted cluster full OCP tag")
+	hsProvisionCmd.Flags().StringVar(&hsSNOTag, "sno-tag", "", "Management cluster OCP tag (e.g., 4.17); used with --sno-release")
+	hsProvisionCmd.Flags().StringVar(&hsSNORelease, "sno-release", "nightly", "Management release type: nightly (default) or ci; used with --sno-tag")
+	hsProvisionCmd.Flags().StringVar(&hsSNOFullTag, "sno-full-tag", "", "Management cluster full OCP tag; overrides --sno-tag and --sno-release")
+	hsProvisionCmd.Flags().StringVar(&hsHCPTag, "hcp-tag", "", "Hosted cluster OCP tag (e.g., 4.17); used with --hcp-release")
+	hsProvisionCmd.Flags().StringVar(&hsHCPRelease, "hcp-release", "nightly", "Hosted release type: nightly (default) or ci; used with --hcp-tag")
+	hsProvisionCmd.Flags().StringVar(&hsHCPFullTag, "hcp-full-tag", "", "Hosted cluster full OCP tag; overrides --hcp-tag and --hcp-release")
 	hsProvisionCmd.Flags().StringVar(&hsVMWorkers, "vm-workers", "0", "Number of VM workers for hosted cluster")
 	hsProvisionCmd.Flags().StringVar(&hsImageOverride, "image-override", "", "Hypershift operator image override")
 	hsProvisionCmd.Flags().BoolVar(&confirmHS, "confirm", false, "Confirm provisioning (required)")

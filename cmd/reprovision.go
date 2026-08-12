@@ -29,7 +29,9 @@ var (
 var reprovisionCmd = &cobra.Command{
 	Use:   "reprovision",
 	Short: "Reprovision an MNO cluster",
-	Long:  `Submit a reprovisioning request to the succulent service for the specified environment.`,
+	Long: `Submit a reprovisioning request to the succulent service for the specified environment.
+
+Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.`,
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.17 --confirm
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.18 --release-type ci --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -80,9 +82,9 @@ var reprovisionCmd = &cobra.Command{
 func init() {
 	reprovisionCmd.Flags().StringVar(&reprovEmail, "email", "", "Email address for notifications")
 	reprovisionCmd.Flags().StringVar(&reprovOwner, "owner", "", "Username (owner)")
-	reprovisionCmd.Flags().StringVar(&reprovTag, "ocp-tag", "", "OCP version tag (e.g., 4.17, 4.18)")
+	reprovisionCmd.Flags().StringVar(&reprovTag, "ocp-tag", "", "OCP version tag (e.g., 4.17, 5.0); required")
 	reprovisionCmd.Flags().StringVar(&reprovTagDeprecated, "tag", "", "OCP version tag (deprecated: use --ocp-tag)")
-	reprovisionCmd.Flags().StringVar(&reprovVersion, "release-type", "nightly", "Release type (e.g., nightly, ci)")
+	reprovisionCmd.Flags().StringVar(&reprovVersion, "release-type", "nightly", "Release type: nightly (default) or ci; used with --ocp-tag")
 	reprovisionCmd.Flags().StringVar(&reprovVersionDeprecated, "version", "nightly", "Release type (deprecated: use --release-type)")
 
 	_ = reprovisionCmd.Flags().MarkDeprecated("tag", "use --ocp-tag instead")
