@@ -23,7 +23,7 @@ var deleteCmd = &cobra.Command{
 		}
 
 		if !confirmDelete {
-			return fmt.Errorf("--confirm is required to delete an environment")
+			return fmt.Errorf("--confirm is required to delete an environment (use --dry-run to preview)")
 		}
 
 		if err := sharedClient.DeleteEnvironment(cmd.Context(), envName); err != nil {

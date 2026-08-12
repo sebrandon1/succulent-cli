@@ -49,7 +49,7 @@ Full tags override their corresponding short tag + release type flags.`,
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmZTP {
-			return fmt.Errorf("--confirm is required to provision a ZTP cluster")
+			return fmt.Errorf("--confirm is required to provision a ZTP cluster (use --dry-run to preview)")
 		}
 
 		for _, v := range []struct{ tag, flag string }{
@@ -89,7 +89,7 @@ Full tags override their corresponding short tag + release type flags.`,
 		}
 
 		if err := sharedClient.ProvisionZTP(cmd.Context(), envName, &req); err != nil {
-			return fmt.Errorf("submitting ZTP provision request: %w", err)
+			return fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
 		}
 
 		return printResult(CommandResult{
