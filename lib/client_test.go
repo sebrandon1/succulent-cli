@@ -1,11 +1,13 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync/atomic"
 	"testing"
 )
@@ -223,5 +225,72 @@ func TestRetryExhausted(t *testing.T) {
 
 	if got := attempts.Load(); got != 3 {
 		t.Errorf("Expected 3 attempts, got %d", got)
+	}
+}
+
+func TestReadLimited(t *testing.T) {
+	tests := []struct {
+		name      string
+		data      []byte
+		limit     int64
+		wantErr   bool
+		errSubstr string
+	}{
+		{
+			name:  "under limit",
+			data:  []byte("hello"),
+			limit: 100,
+		},
+		{
+			name:  "exactly at limit",
+			data:  bytes.Repeat([]byte("a"), 100),
+			limit: 100,
+		},
+		{
+			name:      "over limit",
+			data:      bytes.Repeat([]byte("a"), 101),
+			limit:     100,
+			wantErr:   true,
+			errSubstr: "truncated",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := readLimited(bytes.NewReader(tt.data), tt.limit)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("readLimited() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if tt.wantErr && !strings.Contains(err.Error(), tt.errSubstr) {
+				t.Errorf("Expected error containing %q, got: %v", tt.errSubstr, err)
+			}
+
+			if !tt.wantErr && !bytes.Equal(result, tt.data) {
+				t.Errorf("Expected data to match input")
+			}
+		})
+	}
+}
+
+func TestHumanizeBytes(t *testing.T) {
+	tests := []struct {
+		input int64
+		want  string
+	}{
+		{500, "500 bytes"},
+		{1024, "1KB"},
+		{4096, "4KB"},
+		{1024 * 1024, "1MB"},
+		{10 * 1024 * 1024, "10MB"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.want, func(t *testing.T) {
+			got := humanizeBytes(tt.input)
+			if got != tt.want {
+				t.Errorf("humanizeBytes(%d) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
 	}
 }
