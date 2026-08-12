@@ -442,8 +442,8 @@ func TestWaitForClusterReadyTimeoutNoNodeStates(t *testing.T) {
 		t.Fatal("Expected timeout error, got nil")
 	}
 
-	if strings.Contains(err.Error(), "last state:") {
-		t.Errorf("Expected no 'last state:' when loop never ran, got: %v", err)
+	if !strings.Contains(err.Error(), "no node data received") {
+		t.Errorf("Expected 'no node data received' when loop never ran, got: %v", err)
 	}
 }
 
@@ -537,5 +537,74 @@ func TestWaitForClusterReadyCancelled(t *testing.T) {
 
 	if !errors.Is(err, context.Canceled) {
 		t.Errorf("Expected context.Canceled error, got: %v", err)
+	}
+}
+
+func TestFormatNodeSummary(t *testing.T) {
+	tests := []struct {
+		name         string
+		nodes        []NodeInfo
+		wantContains []string
+	}{
+		{
+			name: "mixed up and down",
+			nodes: []NodeInfo{
+				{Name: "env-installer", Status: "up", IP: "10.0.0.1"},
+				{Name: "env-master-0", Status: "up", IP: "10.0.0.2"},
+				{Name: "env-worker-0", Status: "down"},
+			},
+			wantContains: []string{
+				"Nodes not ready (1)",
+				"env-worker-0 [down]",
+				"Nodes up (2)",
+				"env-installer (10.0.0.1)",
+				"env-master-0 (10.0.0.2)",
+			},
+		},
+		{
+			name: "all down",
+			nodes: []NodeInfo{
+				{Name: "env-installer", Status: "down"},
+				{Name: "env-master-0", Status: "down"},
+			},
+			wantContains: []string{
+				"Nodes not ready (2)",
+				"env-installer [down]",
+				"env-master-0 [down]",
+			},
+		},
+		{
+			name: "all up",
+			nodes: []NodeInfo{
+				{Name: "env-installer", Status: "up", IP: "10.0.0.1"},
+			},
+			wantContains: []string{
+				"Nodes up (1)",
+				"env-installer (10.0.0.1)",
+			},
+		},
+		{
+			name: "error status shown in brackets",
+			nodes: []NodeInfo{
+				{Name: "env-installer", Status: "up", IP: "10.0.0.1"},
+				{Name: "env-master-0", Status: "error", IP: "10.0.0.2"},
+			},
+			wantContains: []string{
+				"Nodes not ready (1)",
+				"env-master-0 (10.0.0.2) [error]",
+				"Nodes up (1)",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatNodeSummary(tt.nodes)
+			for _, want := range tt.wantContains {
+				if !strings.Contains(result, want) {
+					t.Errorf("Expected %q in output:\n%s", want, result)
+				}
+			}
+		})
 	}
 }
