@@ -53,6 +53,10 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 			return err
 		}
 
+		if err := validateNumericFlag(reprovDiskSize, "disk-size"); err != nil {
+			return err
+		}
+
 		owner, email, err := resolveOwnerEmail(reprovOwner, reprovEmail)
 		if err != nil {
 			return err
