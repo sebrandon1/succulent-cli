@@ -169,7 +169,7 @@ func sortDetails(details []lib.EnvironmentDetail, sortBy string) {
 
 func init() {
 	listCmd.Flags().BoolVar(&listNoDetail, "no-detail", false, "Skip fetching per-environment info (fast mode)")
-	listCmd.Flags().BoolVar(&listNoCache, "no-cache", false, "Bypass the info cache")
+	listCmd.Flags().BoolVar(&listNoCache, "no-cache", false, "Bypass the info cache (default TTL: 60s, stored in ~/.config/succulent-cli/)")
 	listCmd.Flags().IntVar(&listConcurrency, "concurrency", 10, "Number of parallel info fetches")
 	listCmd.Flags().StringVar(&listSortBy, "sort", "name", "Sort by field: name, status, group, nodes-up")
 	listCmd.Flags().StringVar(&listFilter, "filter", "", "Filter environments: key=value (e.g., status=active, group=Lab1)")

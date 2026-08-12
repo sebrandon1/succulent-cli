@@ -44,6 +44,9 @@ var configShowCmd = &cobra.Command{
 			fmt.Printf("%-16s %v\n", key+":", viper.Get(key))
 		}
 
+		fmt.Printf("\n%-16s %s\n", "cache_file:", filepath.Join(configDir(), "cache.json"))
+		fmt.Printf("%-16s %s\n", "cache_ttl:", "60s")
+
 		return nil
 	},
 }
