@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -157,4 +158,18 @@ func TestConfigDir(t *testing.T) {
 	if !strings.HasSuffix(dir, ".config/succulent-cli") {
 		t.Errorf("Expected path ending with .config/succulent-cli, got %s", dir)
 	}
+}
+
+func TestPrintDryRun(t *testing.T) {
+	t.Run("with form data", func(t *testing.T) {
+		data := url.Values{
+			"email": {"user@example.com"},
+			"tag":   {"4.17"},
+		}
+		printDryRun("reprovision", "myenv", data)
+	})
+
+	t.Run("without form data", func(t *testing.T) {
+		printDryRun("delete", "myenv", nil)
+	})
 }

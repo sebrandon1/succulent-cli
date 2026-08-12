@@ -6,7 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var confirmDelete bool
+var (
+	confirmDelete bool
+	dryRunDelete  bool
+)
 
 var deleteCmd = &cobra.Command{
 	Use:     "delete",
@@ -14,6 +17,11 @@ var deleteCmd = &cobra.Command{
 	Long:    `Delete the specified environment from the succulent service. Requires --confirm flag for safety.`,
 	Example: `  succulent-cli delete --env myenv --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		if dryRunDelete {
+			printDryRun("delete", envName, nil)
+			return nil
+		}
+
 		if !confirmDelete {
 			return fmt.Errorf("--confirm is required to delete an environment")
 		}
@@ -32,6 +40,7 @@ var deleteCmd = &cobra.Command{
 
 func init() {
 	deleteCmd.Flags().BoolVar(&confirmDelete, "confirm", false, "Confirm deletion (required)")
+	deleteCmd.Flags().BoolVar(&dryRunDelete, "dry-run", false, "Show what would be done without executing")
 
 	rootCmd.AddCommand(deleteCmd)
 }

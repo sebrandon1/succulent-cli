@@ -9,6 +9,7 @@ import (
 
 var (
 	confirmZTP      bool
+	dryRunZTP       bool
 	ztpOwner        string
 	ztpEmail        string
 	ztpSNOTag       string
@@ -73,6 +74,11 @@ Full tags override their corresponding short tag + release type flags.`,
 			VMWorkersCount:       ztpVMWorkers,
 		}
 
+		if dryRunZTP {
+			printDryRun("provision ZTP on", envName, req.FormValues())
+			return nil
+		}
+
 		if err := sharedClient.ProvisionZTP(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting ZTP provision request: %w", err)
 		}
@@ -123,6 +129,7 @@ func init() {
 	ztpProvisionCmd.Flags().StringVar(&ztpBMWorkers, "bm-workers", "", "Comma-separated baremetal worker hosts")
 	ztpProvisionCmd.Flags().StringVar(&ztpVMWorkers, "vm-workers", "1", "Number of VM workers")
 	ztpProvisionCmd.Flags().BoolVar(&confirmZTP, "confirm", false, "Confirm provisioning (required)")
+	ztpProvisionCmd.Flags().BoolVar(&dryRunZTP, "dry-run", false, "Show what would be sent without executing")
 
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCChoice, "choice", "", "Kubeconfig type: management or spoke")
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCDest, "dest", "", "Local destination path")
