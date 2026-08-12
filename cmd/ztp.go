@@ -35,7 +35,15 @@ var ztpCmd = &cobra.Command{
 var ztpProvisionCmd = &cobra.Command{
 	Use:   cmdNameProvision,
 	Short: "Provision a ZTP hub and spoke cluster",
-	Long:  `Submit a ZTP provisioning request for the specified environment.`,
+	Long: `Submit a ZTP provisioning request for the specified environment.
+
+Version flags for hub and spoke (use one approach per cluster):
+  --sno-tag + --sno-release       Short tag with release type for the hub cluster
+  --sno-full-tag                  Exact build tag for the hub cluster
+  --spoke-tag + --spoke-release   Short tag with release type for spoke clusters
+  --spoke-full-tag                Exact build tag for spoke clusters
+
+Full tags override their corresponding short tag + release type flags.`,
 	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -102,12 +110,12 @@ var ztpKubeconfigCmd = &cobra.Command{
 func init() {
 	ztpProvisionCmd.Flags().StringVar(&ztpOwner, "owner", "", "Username (owner)")
 	ztpProvisionCmd.Flags().StringVar(&ztpEmail, "email", "", "Email address for notifications")
-	ztpProvisionCmd.Flags().StringVar(&ztpSNOTag, "sno-tag", "", "Hub (SNO) cluster OCP tag (e.g., 4.17)")
-	ztpProvisionCmd.Flags().StringVar(&ztpSNORelease, "sno-release", "nightly", "Hub cluster release type")
-	ztpProvisionCmd.Flags().StringVar(&ztpSNOFullTag, "sno-full-tag", "", "Hub cluster full OCP tag")
-	ztpProvisionCmd.Flags().StringVar(&ztpSpokeTag, "spoke-tag", "", "Spoke cluster OCP tag (e.g., 4.17)")
-	ztpProvisionCmd.Flags().StringVar(&ztpSpokeRelease, "spoke-release", "nightly", "Spoke cluster release type")
-	ztpProvisionCmd.Flags().StringVar(&ztpSpokeFullTag, "spoke-full-tag", "", "Spoke cluster full OCP tag")
+	ztpProvisionCmd.Flags().StringVar(&ztpSNOTag, "sno-tag", "", "Hub cluster OCP tag (e.g., 4.17); used with --sno-release")
+	ztpProvisionCmd.Flags().StringVar(&ztpSNORelease, "sno-release", "nightly", "Hub release type: nightly (default) or ci; used with --sno-tag")
+	ztpProvisionCmd.Flags().StringVar(&ztpSNOFullTag, "sno-full-tag", "", "Hub cluster full OCP tag; overrides --sno-tag and --sno-release")
+	ztpProvisionCmd.Flags().StringVar(&ztpSpokeTag, "spoke-tag", "", "Spoke cluster OCP tag (e.g., 4.17); used with --spoke-release")
+	ztpProvisionCmd.Flags().StringVar(&ztpSpokeRelease, "spoke-release", "nightly", "Spoke release type: nightly (default) or ci; used with --spoke-tag")
+	ztpProvisionCmd.Flags().StringVar(&ztpSpokeFullTag, "spoke-full-tag", "", "Spoke cluster full OCP tag; overrides --spoke-tag and --spoke-release")
 	ztpProvisionCmd.Flags().StringVar(&ztpType, "type", "sno", "ZTP type: sno or mno")
 	ztpProvisionCmd.Flags().BoolVar(&ztpStopBefore, "stop-before-deployment", false, "Stop before actual spoke deployment for manual GitOps changes")
 	ztpProvisionCmd.Flags().StringVar(&ztpVMMasters, "vm-masters", "3", "Number of VM masters (MNO only)")

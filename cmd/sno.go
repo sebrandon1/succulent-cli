@@ -21,7 +21,14 @@ var (
 var snoProvisionCmd = &cobra.Command{
 	Use:   cmdNameProvision,
 	Short: "Provision an SNO cluster",
-	Long:  `Submit an SNO provisioning request to the succulent service for the specified environment.`,
+	Long: `Submit an SNO provisioning request to the succulent service for the specified environment.
+
+Version flags (use one approach):
+  --ocp-tag + --release-type    Short tag with release type (e.g., --ocp-tag 4.17 --release-type nightly)
+  --full-ocp-tag                Exact build tag (e.g., 4.17.0-0.nightly-2026-05-20-123456)
+  --full-image                  Full container image reference
+
+If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignored.`,
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17 --confirm
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -80,10 +87,10 @@ var snoKubeconfigCmd = &cobra.Command{
 func init() {
 	snoProvisionCmd.Flags().StringVar(&snoOwner, "owner", "", "Username (owner)")
 	snoProvisionCmd.Flags().StringVar(&snoEmail, "email", "", "Email address for notifications")
-	snoProvisionCmd.Flags().StringVar(&snoOCPTag, "ocp-tag", "", "OCP tag (e.g., 4.17)")
-	snoProvisionCmd.Flags().StringVar(&snoRelease, "release-type", "nightly", "OCP release type (e.g., nightly, ci)")
-	snoProvisionCmd.Flags().StringVar(&snoFullTag, "full-ocp-tag", "", "Full OCP tag (e.g., 4.14.0-0.nightly-2023-12-14-072431)")
-	snoProvisionCmd.Flags().StringVar(&snoFullImage, "full-image", "", "Full image name to use for installation")
+	snoProvisionCmd.Flags().StringVar(&snoOCPTag, "ocp-tag", "", "OCP version tag (e.g., 4.17); used with --release-type")
+	snoProvisionCmd.Flags().StringVar(&snoRelease, "release-type", "nightly", "Release type: nightly (default) or ci; used with --ocp-tag")
+	snoProvisionCmd.Flags().StringVar(&snoFullTag, "full-ocp-tag", "", "Full OCP tag; overrides --ocp-tag and --release-type")
+	snoProvisionCmd.Flags().StringVar(&snoFullImage, "full-image", "", "Full container image reference; overrides all other tag flags")
 	snoProvisionCmd.Flags().BoolVar(&confirmSNO, "confirm", false, "Confirm provisioning (required)")
 
 	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/{env}-sno-kubeconfig)")
