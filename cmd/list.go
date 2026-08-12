@@ -23,11 +23,18 @@ var (
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available environments",
-	Long:  `Fetch the main page and list all available environments with status details.`,
+	Long: `Fetch the main page and list all available environments with status details.
+
+The --filter flag supports a single key=value match (case-insensitive).
+Valid keys: name, status, group, owner.
+For complex filtering, use --output json and pipe to jq:
+
+  succulent-cli list --output json | jq '.[] | select(.status == "active" and .group == "Lab1")'`,
 	Example: `  succulent-cli list
   succulent-cli list --no-detail
   succulent-cli list --no-cache
-  succulent-cli list --output json`,
+  succulent-cli list --filter status=active
+  succulent-cli list --output json | jq '.[] | select(.owner == "jdoe")'`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		ctx := cmd.Context()
 
@@ -172,7 +179,7 @@ func init() {
 	listCmd.Flags().BoolVar(&listNoCache, "no-cache", false, "Bypass the info cache")
 	listCmd.Flags().IntVar(&listConcurrency, "concurrency", 10, "Number of parallel info fetches")
 	listCmd.Flags().StringVar(&listSortBy, "sort", "name", "Sort by field: name, status, group, nodes-up")
-	listCmd.Flags().StringVar(&listFilter, "filter", "", "Filter environments: key=value (e.g., status=active, group=Lab1)")
+	listCmd.Flags().StringVar(&listFilter, "filter", "", "Filter by single field: key=value (valid keys: name, status, group, owner; use --output json | jq for complex queries)")
 
 	rootCmd.AddCommand(listCmd)
 }
