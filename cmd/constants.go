@@ -2,6 +2,7 @@ package cmd
 
 const (
 	cmdNameConfig           = "config"
+	cmdNameInfo             = "info"
 	cmdNameKubeconfig       = "kubeconfig"
 	cmdNameProvision        = "provision"
 	defaultRemoteUser       = "root"

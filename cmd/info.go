@@ -12,7 +12,7 @@ import (
 var infoNoCache bool
 
 var infoCmd = &cobra.Command{
-	Use:   "info",
+	Use:   cmdNameInfo,
 	Short: "Get cluster node information for an environment",
 	Long:  `Fetch the infoplan page for the specified environment and output structured node information.`,
 	Example: `  succulent-cli get info --env myenv
