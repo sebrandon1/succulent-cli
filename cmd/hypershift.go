@@ -9,6 +9,7 @@ import (
 
 var (
 	confirmHS       bool
+	dryRunHS        bool
 	hsOwner         string
 	hsEmail         string
 	hsSNOTag        string
@@ -65,6 +66,11 @@ Full tags override their corresponding short tag + release type flags.`,
 			ImageOverride:  hsImageOverride,
 		}
 
+		if dryRunHS {
+			printDryRun("provision Hypershift on", envName, req.FormValues())
+			return nil
+		}
+
 		if err := sharedClient.ProvisionHypershift(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting Hypershift provision request: %w", err)
 		}
@@ -111,6 +117,7 @@ func init() {
 	hsProvisionCmd.Flags().StringVar(&hsVMWorkers, "vm-workers", "0", "Number of VM workers for hosted cluster")
 	hsProvisionCmd.Flags().StringVar(&hsImageOverride, "image-override", "", "Hypershift operator image override")
 	hsProvisionCmd.Flags().BoolVar(&confirmHS, "confirm", false, "Confirm provisioning (required)")
+	hsProvisionCmd.Flags().BoolVar(&dryRunHS, "dry-run", false, "Show what would be sent without executing")
 
 	hsKubeconfigCmd.Flags().StringVar(&hsKCChoice, "choice", "", "Kubeconfig type: management or hosted")
 	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path")

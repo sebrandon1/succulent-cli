@@ -21,6 +21,8 @@ var (
 	reprovEndDate        string
 	reprovKcliParams     string
 
+	dryRunReprovision bool
+
 	// Deprecated flag variables
 	reprovTagDeprecated     string
 	reprovVersionDeprecated string
@@ -65,6 +67,11 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 			KcliParams:        reprovKcliParams,
 		}
 
+		if dryRunReprovision {
+			printDryRun("reprovision", envName, req.FormValues())
+			return nil
+		}
+
 		// Reprovision can take several minutes, use 5-minute timeout
 		client := sharedClient.WithTimeout(5 * time.Minute)
 		if err := client.Reprovision(cmd.Context(), envName, &req); err != nil {
@@ -97,6 +104,7 @@ func init() {
 	reprovisionCmd.Flags().StringVar(&reprovKcliParams, "kcli-params", "", "Additional kcli parameters (key:value format)")
 
 	reprovisionCmd.Flags().BoolVar(&confirmReprovision, "confirm", false, "Confirm reprovisioning (required)")
+	reprovisionCmd.Flags().BoolVar(&dryRunReprovision, "dry-run", false, "Show what would be sent without executing")
 
 	cobra.CheckErr(reprovisionCmd.MarkFlagRequired("ocp-tag"))
 

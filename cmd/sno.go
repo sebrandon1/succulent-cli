@@ -9,6 +9,7 @@ import (
 
 var (
 	confirmSNO   bool
+	dryRunSNO    bool
 	snoOwner     string
 	snoEmail     string
 	snoOCPTag    string
@@ -48,6 +49,11 @@ If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignor
 			ReleaseType:   snoRelease,
 			FullOCPTag:    snoFullTag,
 			FullImageName: snoFullImage,
+		}
+
+		if dryRunSNO {
+			printDryRun("provision SNO on", envName, req.FormValues())
+			return nil
 		}
 
 		if err := sharedClient.ProvisionSNO(cmd.Context(), envName, &req); err != nil {
@@ -92,6 +98,7 @@ func init() {
 	snoProvisionCmd.Flags().StringVar(&snoFullTag, "full-ocp-tag", "", "Full OCP tag; overrides --ocp-tag and --release-type")
 	snoProvisionCmd.Flags().StringVar(&snoFullImage, "full-image", "", "Full container image reference; overrides all other tag flags")
 	snoProvisionCmd.Flags().BoolVar(&confirmSNO, "confirm", false, "Confirm provisioning (required)")
+	snoProvisionCmd.Flags().BoolVar(&dryRunSNO, "dry-run", false, "Show what would be sent without executing")
 
 	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/{env}-sno-kubeconfig)")
 }

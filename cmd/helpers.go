@@ -3,8 +3,10 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/viper"
@@ -89,4 +91,25 @@ func defaultDestPath(env, suffix string) (string, error) {
 	}
 
 	return filepath.Join(home, defaultDestDir, "succulent", env, suffix), nil
+}
+
+func printDryRun(action, env string, data url.Values) {
+	fmt.Printf("[dry-run] Would %s environment: %s\n", action, env)
+
+	if len(data) == 0 {
+		return
+	}
+
+	fmt.Println("[dry-run] Form data:")
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		fmt.Printf("  %s = %s\n", k, data.Get(k))
+	}
 }
