@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"golang.org/x/net/html"
 )
@@ -23,15 +24,17 @@ func (c *Client) ListEnvironments(ctx context.Context) ([]EnvironmentInfo, error
 	return parseEnvironmentList(resp.Body)
 }
 
-func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, cache *Cache) ([]EnvironmentDetail, error) {
+func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, cache *Cache, w io.Writer) ([]EnvironmentDetail, error) {
 	envs, err := c.ListEnvironments(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	details := make([]EnvironmentDetail, len(envs))
+	total := len(envs)
+	var completed atomic.Int32
+	details := make([]EnvironmentDetail, total)
 	sem := make(chan struct{}, concurrency)
-	fetchedInfos := make([]*ClusterInfo, len(envs))
+	fetchedInfos := make([]*ClusterInfo, total)
 
 	var wg sync.WaitGroup
 
@@ -46,6 +49,7 @@ func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, 
 			if cached, ok := cache.GetInfo(env.Name); ok {
 				fillDetail(&details[i], cached)
 				fetchedInfos[i] = cached
+				completed.Add(1)
 
 				continue
 			}
@@ -60,6 +64,10 @@ func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, 
 			defer func() { <-sem }()
 
 			info, infoErr := c.GetInfoPlan(ctx, envName)
+
+			done := int(completed.Add(1))
+			fmt.Fprintf(w, "\r  Fetching environment info... %d/%d", done, total)
+
 			if infoErr != nil {
 				return
 			}
@@ -75,6 +83,10 @@ func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, 
 	}
 
 	wg.Wait()
+
+	if total > 0 {
+		fmt.Fprintln(w)
+	}
 
 	if cache != nil {
 		toCache := make(map[string]*ClusterInfo)
