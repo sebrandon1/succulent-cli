@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -10,6 +11,11 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+)
+
+const (
+	cacheFileName   = "cache.json"
+	defaultCacheTTL = "60s"
 )
 
 var validConfigKeys = []string{
@@ -44,8 +50,8 @@ var configShowCmd = &cobra.Command{
 			fmt.Printf("%-16s %v\n", key+":", viper.Get(key))
 		}
 
-		fmt.Printf("\n%-16s %s\n", "cache_file:", filepath.Join(configDir(), "cache.json"))
-		fmt.Printf("%-16s %s\n", "cache_ttl:", "60s")
+		fmt.Printf("\n%-16s %s\n", "cache_file:", filepath.Join(configDir(), cacheFileName))
+		fmt.Printf("%-16s %s\n", "cache_ttl:", defaultCacheTTL)
 
 		return nil
 	},
@@ -185,12 +191,160 @@ var configEditCmd = &cobra.Command{
 	},
 }
 
+var cacheCmd = &cobra.Command{
+	Use:   "cache",
+	Short: "Manage environment info cache",
+}
+
+var cacheClearCmd = &cobra.Command{
+	Use:     "clear",
+	Short:   "Clear the environment info cache",
+	Example: `  succulent-cli config cache clear`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		cachePath := filepath.Join(configDir(), cacheFileName)
+
+		if err := os.Remove(cachePath); err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println("Cache is already empty")
+				return nil
+			}
+			return fmt.Errorf("clearing cache: %w", err)
+		}
+
+		fmt.Printf("Cache cleared: %s\n", cachePath)
+
+		return nil
+	},
+}
+
+var cacheShowCmd = &cobra.Command{
+	Use:   "show",
+	Short: "Show cached environment info",
+	Example: `  succulent-cli config cache show
+  succulent-cli config cache show --output json`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		cachePath := filepath.Join(configDir(), cacheFileName)
+
+		data, err := os.ReadFile(cachePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println("No cache file found")
+				return nil
+			}
+
+			return fmt.Errorf("reading cache file: %w", err)
+		}
+
+		output := viper.GetString("output")
+		if output == "json" {
+			fmt.Println(string(data))
+			return nil
+		}
+
+		var cache struct {
+			Environments map[string]struct {
+				Info struct {
+					Environment  string `json:"environment"`
+					InstallerIP  string `json:"installer_ip"`
+					CreationDate string `json:"creation_date"`
+					NodeCount    int    `json:"node_count"`
+				} `json:"info"`
+				FetchedAt string `json:"fetched_at"`
+			} `json:"environments"`
+		}
+
+		if err := json.Unmarshal(data, &cache); err != nil {
+			return fmt.Errorf("parsing cache file: %w", err)
+		}
+
+		if len(cache.Environments) == 0 {
+			fmt.Println("Cache is empty")
+			return nil
+		}
+
+		fmt.Printf("%-20s %-20s %-20s %s\n", "Environment", "Installer IP", "Nodes", "Cached At")
+		fmt.Println(strings.Repeat("-", 80))
+
+		for env, entry := range cache.Environments {
+			fmt.Printf("%-20s %-20s %-20d %s\n",
+				env,
+				entry.Info.InstallerIP,
+				entry.Info.NodeCount,
+				entry.FetchedAt)
+		}
+
+		return nil
+	},
+}
+
+var cacheStatusCmd = &cobra.Command{
+	Use:     "status",
+	Short:   "Show cache statistics",
+	Example: `  succulent-cli config cache status`,
+	RunE: func(_ *cobra.Command, _ []string) error {
+		cachePath := filepath.Join(configDir(), cacheFileName)
+
+		fmt.Printf("Cache location: %s\n", cachePath)
+
+		data, err := os.ReadFile(cachePath)
+		if err != nil {
+			if os.IsNotExist(err) {
+				fmt.Println("Status: Cache file does not exist")
+				return nil
+			}
+
+			return fmt.Errorf("reading cache file: %w", err)
+		}
+
+		var cache struct {
+			Environments map[string]struct {
+				FetchedAt string `json:"fetched_at"`
+			} `json:"environments"`
+		}
+
+		if err := json.Unmarshal(data, &cache); err != nil {
+			return fmt.Errorf("parsing cache file: %w", err)
+		}
+
+		fmt.Printf("Size: %d bytes\n", len(data))
+		fmt.Printf("Entry count: %d\n", len(cache.Environments))
+
+		if len(cache.Environments) > 0 {
+			var oldest, newest string
+			for _, entry := range cache.Environments {
+				if oldest == "" || entry.FetchedAt < oldest {
+					oldest = entry.FetchedAt
+				}
+				if newest == "" || entry.FetchedAt > newest {
+					newest = entry.FetchedAt
+				}
+			}
+
+			fmt.Printf("Oldest entry: %s\n", oldest)
+			fmt.Printf("Newest entry: %s\n", newest)
+		}
+
+		ttl := viper.GetString("cache_ttl")
+		if ttl == "" {
+			ttl = defaultCacheTTL
+		}
+		fmt.Printf("TTL: %s\n", ttl)
+
+		return nil
+	},
+}
+
 func init() {
 	configCmd.AddCommand(configShowCmd)
 	configCmd.AddCommand(configPathCmd)
 	configCmd.AddCommand(configInitCmd)
 	configCmd.AddCommand(configSetCmd)
 	configCmd.AddCommand(configEditCmd)
+
+	cacheCmd.AddCommand(cacheClearCmd)
+	cacheCmd.AddCommand(cacheShowCmd)
+	cacheCmd.AddCommand(cacheStatusCmd)
+	configCmd.AddCommand(cacheCmd)
 
 	rootCmd.AddCommand(configCmd)
 }
