@@ -107,7 +107,7 @@ func skipEnvRequirement(cmd *cobra.Command) bool {
 func skipEnvValidation(cmd *cobra.Command) bool {
 	for c := cmd; c != nil; c = c.Parent() {
 		name := c.Name()
-		if name == "completion" || name == "help" || name == "__complete" || name == "version" || name == cmdNameConfig {
+		if name == "completion" || name == "help" || name == "__complete" || name == "version" || name == cmdNameConfig || name == "health" {
 			return true
 		}
 	}
