@@ -133,7 +133,7 @@ func init() {
 	hsProvisionCmd.Flags().BoolVar(&dryRunHS, "dry-run", false, "Show what would be sent without executing")
 
 	hsKubeconfigCmd.Flags().StringVar(&hsKCChoice, "choice", "", "Kubeconfig type: management or hosted")
-	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path")
+	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/hypershift-{choice}-kubeconfig)")
 	cobra.CheckErr(hsKubeconfigCmd.MarkFlagRequired("choice"))
 
 	hypershiftCmd.AddCommand(hsProvisionCmd)

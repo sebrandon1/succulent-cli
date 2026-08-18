@@ -1,15 +1,15 @@
 # Contributing to succulent-cli
 
-## Development
+Requires Go 1.26+.
 
 1. Clone the repository
-2. Run `make build` to build
-3. Run `make test` to run tests
-4. Run `make lint` to run the linter
+2. `make build`
+3. `make test`
+4. `make lint`
 
 ## Pull Requests
 
-- Keep changes focused and atomic
+- Keep changes focused
 - Add tests for new functionality
-- Ensure `make lint` passes before submitting
-- Follow the existing code patterns (lib/ for API logic, cmd/ for CLI)
+- `make lint` and `make test` must pass
+- API logic in `lib/`, CLI in `cmd/` (see [CLAUDE.md](CLAUDE.md))
