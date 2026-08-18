@@ -74,7 +74,7 @@ func RemoveSSHHostKey(ip string) error {
 	return nil
 }
 
-func FetchKubeconfig(ip, user, password, remotePath, destPath string) error {
+func FetchKubeconfig(ip, user, password, remotePath, destPath string, strictSSH bool) error {
 	if err := validateIP(ip); err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func FetchKubeconfig(ip, user, password, remotePath, destPath string) error {
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	cmd := buildSCPCommand(ip, user, password, remotePath, destPath)
+	cmd := buildSCPCommand(ip, user, password, remotePath, destPath, strictSSH)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -108,14 +108,10 @@ func FetchKubeconfig(ip, user, password, remotePath, destPath string) error {
 	return nil
 }
 
-func buildSCPCommand(ip, user, password, remotePath, destPath string) *exec.Cmd {
+func buildSCPCommand(ip, user, password, remotePath, destPath string, strictSSH bool) *exec.Cmd {
 	remote := fmt.Sprintf("%s@%s:%s", user, ip, remotePath)
 
-	scpArgs := []string{
-		"-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=/dev/null",
-		remote, destPath,
-	}
+	scpArgs := append(sshHostKeyArgs(strictSSH), remote, destPath)
 
 	if password != "" {
 		args := append([]string{"-e", "scp"}, scpArgs...)
@@ -126,6 +122,17 @@ func buildSCPCommand(ip, user, password, remotePath, destPath string) *exec.Cmd 
 	}
 
 	return exec.Command("scp", scpArgs...) //nolint:gosec
+}
+
+func sshHostKeyArgs(strictSSH bool) []string {
+	if strictSSH {
+		return []string{"-o", "StrictHostKeyChecking=yes"}
+	}
+
+	return []string{
+		"-o", "StrictHostKeyChecking=no",
+		"-o", "UserKnownHostsFile=/dev/null",
+	}
 }
 
 func formatNodeSummary(nodes []NodeInfo) string {

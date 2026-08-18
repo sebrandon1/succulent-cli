@@ -16,6 +16,7 @@ succulent-cli config path    # Print config file path
 url: "https://succulent.example.com"
 env: "myenv"
 verify_ssl: false
+strict_ssh: false
 remote_user: "root"
 remote_path: "/root/ocp/auth/kubeconfig"
 default_email: "user@example.com"

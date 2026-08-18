@@ -138,7 +138,7 @@ func TestFetchKubeconfigInvalidIP(t *testing.T) {
 			}
 
 			t.Run(name, func(t *testing.T) {
-				err := FetchKubeconfig(ip, "root", password, "/path", "/dest")
+				err := FetchKubeconfig(ip, "root", password, "/path", "/dest", false)
 				if err == nil {
 					t.Fatal("Expected error for invalid IP")
 				}
@@ -163,6 +163,16 @@ func assertArgPresent(t *testing.T, args []string, want string) {
 	t.Errorf("Expected %q in args: %v", want, args)
 }
 
+func assertArgAbsent(t *testing.T, args []string, dontWant string) {
+	t.Helper()
+
+	for _, arg := range args {
+		if arg == dontWant {
+			t.Errorf("Did not expect %q in args: %v", dontWant, args)
+		}
+	}
+}
+
 func assertEnvContains(t *testing.T, env []string, want string) {
 	t.Helper()
 
@@ -183,8 +193,11 @@ func TestBuildSCPCommand(t *testing.T) {
 		password    string
 		remotePath  string
 		destPath    string
+		strictSSH   bool
 		wantBinary  string
 		wantSSHPASS bool
+		wantStrict  string
+		wantNullKH  bool
 	}{
 		{
 			name:       "without password uses scp directly",
@@ -193,6 +206,8 @@ func TestBuildSCPCommand(t *testing.T) {
 			remotePath: "/root/ocp/auth/kubeconfig",
 			destPath:   "/tmp/kubeconfig",
 			wantBinary: "scp",
+			wantStrict: "StrictHostKeyChecking=no",
+			wantNullKH: true,
 		},
 		{
 			name:        "with password uses sshpass",
@@ -203,6 +218,8 @@ func TestBuildSCPCommand(t *testing.T) {
 			destPath:    "/tmp/kubeconfig",
 			wantBinary:  "sshpass",
 			wantSSHPASS: true,
+			wantStrict:  "StrictHostKeyChecking=no",
+			wantNullKH:  true,
 		},
 		{
 			name:       "custom user without password",
@@ -211,12 +228,36 @@ func TestBuildSCPCommand(t *testing.T) {
 			remotePath: "/home/kni/kubeconfig",
 			destPath:   "/tmp/kc",
 			wantBinary: "scp",
+			wantStrict: "StrictHostKeyChecking=no",
+			wantNullKH: true,
+		},
+		{
+			name:       "strict SSH uses known_hosts",
+			ip:         "192.168.1.100",
+			user:       "root",
+			remotePath: "/root/ocp/auth/kubeconfig",
+			destPath:   "/tmp/kubeconfig",
+			strictSSH:  true,
+			wantBinary: "scp",
+			wantStrict: "StrictHostKeyChecking=yes",
+		},
+		{
+			name:        "strict SSH with password",
+			ip:          "192.168.1.100",
+			user:        "root",
+			password:    "secret123",
+			remotePath:  "/root/ocp/auth/kubeconfig",
+			destPath:    "/tmp/kubeconfig",
+			strictSSH:   true,
+			wantBinary:  "sshpass",
+			wantSSHPASS: true,
+			wantStrict:  "StrictHostKeyChecking=yes",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := buildSCPCommand(tt.ip, tt.user, tt.password, tt.remotePath, tt.destPath)
+			cmd := buildSCPCommand(tt.ip, tt.user, tt.password, tt.remotePath, tt.destPath, tt.strictSSH)
 
 			if cmd.Args[0] != tt.wantBinary {
 				t.Errorf("Expected binary %q, got %q", tt.wantBinary, cmd.Args[0])
@@ -224,7 +265,13 @@ func TestBuildSCPCommand(t *testing.T) {
 
 			remote := fmt.Sprintf("%s@%s:%s", tt.user, tt.ip, tt.remotePath)
 			assertArgPresent(t, cmd.Args, remote)
-			assertArgPresent(t, cmd.Args, "StrictHostKeyChecking=no")
+			assertArgPresent(t, cmd.Args, tt.wantStrict)
+
+			if tt.wantNullKH {
+				assertArgPresent(t, cmd.Args, "UserKnownHostsFile=/dev/null")
+			} else {
+				assertArgAbsent(t, cmd.Args, "UserKnownHostsFile=/dev/null")
+			}
 
 			if tt.wantSSHPASS {
 				assertEnvContains(t, cmd.Env, "SSHPASS="+tt.password)
@@ -232,6 +279,17 @@ func TestBuildSCPCommand(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestSSHHostKeyArgs(t *testing.T) {
+	insecure := sshHostKeyArgs(false)
+	assertArgPresent(t, insecure, "StrictHostKeyChecking=no")
+	assertArgPresent(t, insecure, "UserKnownHostsFile=/dev/null")
+
+	strict := sshHostKeyArgs(true)
+	assertArgPresent(t, strict, "StrictHostKeyChecking=yes")
+	assertArgAbsent(t, strict, "UserKnownHostsFile=/dev/null")
+	assertArgAbsent(t, strict, "StrictHostKeyChecking=no")
 }
 
 func TestWaitForClusterReadyAllUp(t *testing.T) {

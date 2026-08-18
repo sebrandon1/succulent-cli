@@ -207,3 +207,14 @@ func TestSNOSubcommands(t *testing.T) {
 		}
 	}
 }
+
+func TestStrictSSHFlagExists(t *testing.T) {
+	flag := fetchKubeconfigCmd.Flags().Lookup("strict-ssh")
+	if flag == nil {
+		t.Fatal("Expected --strict-ssh flag on kubeconfig fetch, not found")
+	}
+
+	if flag.DefValue != "false" {
+		t.Errorf("Expected --strict-ssh default 'false', got %q", flag.DefValue)
+	}
+}
