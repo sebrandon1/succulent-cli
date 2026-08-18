@@ -1,89 +1,77 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for working in this repository.
 
 ## Requirements
 
 - Go 1.26+
 
-## Build and Development Commands
+## Build
 
 ```bash
-make build          # Build binary with version from git tags
-make test           # Run all tests with verbose output
-make lint           # Run golangci-lint (requires golangci-lint installed)
-make vet            # Run go vet
-make fmt            # Run gofmt and goimports
-make install        # Build and copy binary to $GOPATH/bin
-make coverage       # Run tests with coverage report
-make coverage-html  # Generate HTML coverage report
-make clean          # Remove binary and coverage files
+make build            # Binary with version from git tags
+make test             # All tests, verbose
+make lint             # golangci-lint
+make vet
+make fmt              # gofmt + goimports
+make install          # Build and copy to $GOPATH/bin
+make coverage
+make coverage-html
+make clean
 
-# Run a single test
 go test ./lib -run TestGetInfoPlan -v
-
-# Run tests for a specific package
 go test ./cmd -v
 go test ./lib -v
 ```
 
 ## Architecture
 
-This is a Cobra-based CLI with a two-layer design mirroring [go-quay](https://github.com/sebrandon1/go-quay):
+Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go-quay).
 
-**`lib/`** — API client layer. `Client` struct in `client.go` provides `getRaw()` (returns `*http.Response` for streaming/HTML), `postForm()` (URL-encoded POST), and `postFormRaw()` (returns raw response body) helpers. Each domain file adds methods to `*Client`:
-- `info.go` — `GetInfoPlan` (HTML table parsing via `golang.org/x/net/html`)
-- `log.go` — `StreamLog` (raw Ansible log streaming)
-- `reprovision.go` — `Reprovision` (MNO cluster POST)
-- `sno.go` — `ProvisionSNO`, `GetSNOKubeconfig`
-- `delete.go` — `DeleteEnvironment`
-- `list.go` — `ListEnvironments`, `ListEnvironmentsWithInfo` (concurrent info fetches with optional caching)
-- `hypershift.go` — `ProvisionHypershift`, `GetHypershiftKubeconfig`
-- `ztp.go` — `ProvisionZTP`, `GetZTPKubeconfig`
-- `cache.go` — `Cache` struct with TTL-based JSON file cache (`GetInfo`, `SetInfo`, `SetMultipleInfo`, `Clear`)
-- `kubeconfig.go` — standalone functions (`RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig`) that shell out via `os/exec`
+**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `getRaw`, `postForm`, and `postFormRaw`. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
 
-All request/response types live in `structs.go`.
+| File | Role |
+|------|------|
+| `info.go` | `GetInfoPlan` — HTML table parse (`golang.org/x/net/html`) |
+| `log.go` | `StreamLog` |
+| `reprovision.go` | `Reprovision` |
+| `sno.go` | `ProvisionSNO`, `GetSNOKubeconfig` |
+| `delete.go` | `DeleteEnvironment` |
+| `list.go` | `ListEnvironments`, `ListEnvironmentsWithInfo` |
+| `hypershift.go` | `ProvisionHypershift`, `GetHypershiftKubeconfig` |
+| `ztp.go` | `ProvisionZTP`, `GetZTPKubeconfig` |
+| `cache.go` | TTL JSON file cache |
+| `kubeconfig.go` | `RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig` (`os/exec`); `WaitForClusterReady` polls `GetInfoPlan` |
 
-**`cmd/`** — Cobra command layer. Each file defines commands that parse flags, use a shared `lib.Client` (created in `PersistentPreRunE`), call lib methods, and output results. `root.go` wires the command tree and defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`). `helpers.go` provides `printJSON()`, `printResult()`, `resolveOwnerEmail()`, and `saveKubeconfig()`. `constants.go` centralizes command name strings and defaults.
+**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
 
-**Command tree:**
-```
+```text
 succulent-cli
-├── list                  # List environments with status table (lib.ListEnvironments/ListEnvironmentsWithInfo)
-├── watch                 # Poll until cluster nodes are up (lib.WaitForClusterReady)
-├── get log               # Streams raw Ansible log text (lib.StreamLog → io.Copy to stdout)
-├── get info              # Parses HTML table → JSON (lib.GetInfoPlan, uses golang.org/x/net/html)
-├── reprovision           # MNO cluster POST form (lib.Reprovision)
-├── sno provision         # SNO cluster POST form (lib.ProvisionSNO)
-├── sno kubeconfig        # Downloads SNO kubeconfig (lib.GetSNOKubeconfig)
-├── ztp provision         # ZTP hub+spoke provisioning (lib.ProvisionZTP)
-├── ztp kubeconfig        # Downloads ZTP management or spoke kubeconfig (lib.GetZTPKubeconfig)
-├── hypershift provision  # Hypershift hosted cluster provisioning (lib.ProvisionHypershift)
-├── hypershift kubeconfig # Downloads Hypershift management or hosted kubeconfig (lib.GetHypershiftKubeconfig)
-├── kubeconfig fetch      # Composite: scrapes installer IP from infoplan, then shells out to scp
-├── delete                # Deletes environment, requires --confirm (lib.DeleteEnvironment)
-├── config show           # Show resolved configuration (Viper settings)
-├── config init           # Create default config file at ~/.config/succulent-cli/config.yaml
-├── config path           # Print the config file path
-└── version               # Print CLI version
+├── list | watch | status | health
+├── get info | get log
+├── reprovision | delete
+├── sno provision | sno kubeconfig
+├── ztp provision | ztp kubeconfig
+├── hypershift provision | hypershift kubeconfig
+├── kubeconfig fetch
+├── config show | path | init | set | edit | cache
+├── completion install
+└── version
 ```
 
-**Key patterns:**
-- `lib.NewClient(baseURL, insecureSkipVerify, caCertPath)` — no auth token; SSL verification off by default for self-signed certs; optional CA cert
-- The `/infoplan/{env}` endpoint returns HTML, not JSON — `info.go` walks the DOM tree to extract table rows
-- `kubeconfig.go` has standalone functions (`RemoveSSHHostKey`, `FetchKubeconfig`) that shell out via `os/exec` — these are not `Client` methods since they don't use HTTP
-- `WaitForClusterReady` is a `Client` method because it polls `GetInfoPlan` in a loop
-- Tests use `httptest.NewServer` with handler funcs that validate request path/method/form values
-- Version is embedded at build time via `-ldflags "-X main.version=$(VERSION)"`
-- **Viper config management** — config file at `~/.config/succulent-cli/config.yaml`, env vars with `SUCCULENT_` prefix, CLI flags; all three layers merge via Viper with flag > env > file precedence
-- **Caching** — `lib.Cache` stores per-environment `ClusterInfo` as a JSON file with configurable TTL (default 60s); used by `list` command for concurrent info fetches
-- **Tabwriter output** — `list` command renders aligned table output; `--output json` switches to JSON; `--filter` and `--sort` control filtering/ordering
-- **Owner/email resolution** — `resolveOwnerEmail()` falls back to `default_owner`/`default_email` from config
+**Patterns:**
 
-## Adding a New Endpoint
+- No auth token. TLS verification is off by default for lab self-signed certs; `--verify-ssl` and `--ca-cert` enable it.
+- `/infoplan/{env}` returns HTML, not JSON.
+- `FetchKubeconfig` is not a `Client` method; it shells out to `scp`.
+- Config: flag > `SUCCULENT_*` env > `~/.config/succulent-cli/config.yaml` > defaults.
+- `list` caches `ClusterInfo` as JSON (60s TTL). `--output json` switches table commands to JSON; `--filter` / `--sort` apply to `list`.
+- Tests use `httptest.NewServer`.
+- Version: `-ldflags "-X main.version=$(VERSION)"`.
 
-1. Add request/response structs to `lib/structs.go`
-2. Add `Client` method(s) to `lib/<domain>.go`
-3. Add tests to `lib/<domain>_test.go` using `httptest.NewServer`
-4. Add Cobra command in `cmd/<domain>.go`, register it in `cmd/root.go` `init()`
+## Adding a command
+
+1. Request/response structs in `lib/structs.go`
+2. `Client` method in `lib/<domain>.go`
+3. Tests in `lib/<domain>_test.go` with `httptest.NewServer`
+4. Cobra command in `cmd/<domain>.go`; register it in that file's `init()` via `rootCmd.AddCommand`

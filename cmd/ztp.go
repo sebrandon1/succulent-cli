@@ -149,7 +149,7 @@ func init() {
 	ztpProvisionCmd.Flags().BoolVar(&dryRunZTP, "dry-run", false, "Show what would be sent without executing")
 
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCChoice, "choice", "", "Kubeconfig type: management or spoke")
-	ztpKubeconfigCmd.Flags().StringVar(&ztpKCDest, "dest", "", "Local destination path")
+	ztpKubeconfigCmd.Flags().StringVar(&ztpKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/ztp-{choice}-kubeconfig)")
 	cobra.CheckErr(ztpKubeconfigCmd.MarkFlagRequired("choice"))
 
 	ztpCmd.AddCommand(ztpProvisionCmd)

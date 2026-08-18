@@ -1,117 +1,265 @@
 # Command Reference
 
+`--env` is required except on `list`, `health`, `version`, `config`, and `completion`. `--owner` and `--email` fall back to `default_owner` / `default_email` in config. All `SUCCULENT_*` environment variables are listed in [Configuration](configuration.md).
+
 ## Global Flags
 
 | Flag | Env Var | Default | Description |
 |------|---------|---------|-------------|
-| `--url` | `SUCCULENT_URL` | See `lib.DefaultSucculentURL` | Succulent base URL |
-| `--env` | `SUCCULENT_ENV` | — | Environment name (required) |
-| `--verify-ssl` | — | `false` | Enable SSL certificate verification |
-| `--ca-cert` | — | — | Path to custom CA certificate |
-| `--output`, `-o` | — | `table` | Output format (`json` or `table`) |
+| `--url` | `SUCCULENT_URL` | `https://succulent.eng.redhat.com` | Succulent base URL |
+| `--env` | `SUCCULENT_ENV` | — | Environment name |
+| `--verify-ssl` | `SUCCULENT_VERIFY_SSL` | `false` | Enable TLS certificate verification |
+| `--ca-cert` | `SUCCULENT_CA_CERT` | — | Path to a CA certificate bundle (PEM) |
+| `--output`, `-o` | — | `table` | `json` or `table` |
+| `--timeout` | — | `60` | HTTP request timeout in seconds |
 
-## MNO Reprovision
+## list
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--email` | — | Email address (required) |
-| `--owner` | — | Username (required) |
-| `--ocp-tag` | — | OCP version tag, e.g. 4.17 (required) |
-| `--release-type` | `nightly` | Release type (nightly, ci) |
-| `--openshift-image` | — | Full OpenShift image URL |
-| `--disk-size` | `50` | Disk size in GB |
-| `--virtual-workers` | `true` | Enable virtual workers |
-| `--additional-workers` | — | Comma-separated extra baremetal worker names |
-| `--end-date` | — | End date for the environment |
-| `--kcli-params` | — | Additional kcli parameters (key:value format) |
-| `--confirm` | `false` | Confirm reprovisioning (required) |
-
-## List
+```bash
+succulent-cli list
+succulent-cli list --filter status=active
+succulent-cli list --no-detail
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--no-detail` | `false` | Skip fetching per-environment info (fast mode) |
+| `--no-detail` | `false` | Skip per-environment info fetches |
+| `--no-cache` | `false` | Bypass the info cache (60s TTL) |
+| `--concurrency` | `10` | Parallel info fetches |
+| `--sort` | `name` | `name`, `status`, `group`, or `nodes-up` |
+| `--filter` | — | `key=value` (`name`, `status`, `group`, `owner`). Status is `active`, `partial`, or `empty`. |
+
+## status
+
+```bash
+succulent-cli status --env myenv
+```
+
+No command-specific flags. Uses `--output json` for JSON.
+
+## get info
+
+```bash
+succulent-cli get info --env myenv
+succulent-cli get info --env myenv --no-cache
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
 | `--no-cache` | `false` | Bypass the info cache |
-| `--concurrency` | `10` | Number of parallel info fetches |
-| `--sort` | `name` | Sort by field: name, status, group, nodes-up |
-| `--filter` | — | Filter environments: key=value (e.g., status=active) |
 
-## Watch
+## get log
+
+```bash
+succulent-cli get log --env myenv
+```
+
+No command-specific flags. Streams Ansible log text to stdout.
+
+## watch
+
+```bash
+succulent-cli watch --env myenv
+succulent-cli watch --env myenv --control-plane-only
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--max-wait` | `60` | Maximum minutes to wait |
 | `--poll-interval` | `30` | Seconds between status checks |
-| `--control-plane-only` | `false` | Report ready when installer and masters are up |
+| `--control-plane-only` | `false` | Ready when installer and masters are up |
 
-## SNO Provision
+## health
+
+```bash
+succulent-cli health
+succulent-cli health --verify-ssl
+```
+
+No command-specific flags. Checks TLS and HTTP reachability of `--url`.
+
+## reprovision
+
+```bash
+succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.17 --confirm
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--owner` | — | Username (required) |
-| `--email` | — | Email address (required) |
-| `--ocp-tag` | — | OCP tag (e.g. 4.17) |
-| `--release-type` | `nightly` | Release type (nightly, ci) |
-| `--full-ocp-tag` | — | Full OCP tag (e.g. 4.14.0-0.nightly-2023-12-14-072431) |
-| `--full-image` | — | Full image name for installation |
-| `--confirm` | `false` | Confirm provisioning (required) |
+| `--email` | — | Notification email |
+| `--owner` | — | Username |
+| `--ocp-tag` | — | OCP version tag, e.g. `4.17` (required) |
+| `--release-type` | `nightly` | `nightly` or `ci` |
+| `--openshift-image` | — | Full OpenShift image URL |
+| `--disk-size` | `50` | Disk size in GB |
+| `--virtual-workers` | `true` | Enable virtual workers |
+| `--additional-workers` | `false` | `false` to disable, or comma-separated hostnames |
+| `--end-date` | — | End date for the environment |
+| `--kcli-params` | — | Extra kcli parameters (`key:value`) |
+| `--confirm` | `false` | Confirm reprovisioning (required unless `--dry-run`) |
+| `--dry-run` | `false` | Print the request without submitting |
 
-## ZTP Provision
+## sno provision
+
+```bash
+succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17 --confirm
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--owner` | — | Username (required) |
-| `--email` | — | Email address (required) |
-| `--sno-tag` | — | Hub (SNO) cluster OCP tag (e.g. 4.17) |
-| `--sno-release` | `nightly` | Hub cluster release type |
-| `--sno-full-tag` | — | Hub cluster full OCP tag |
-| `--spoke-tag` | — | Spoke cluster OCP tag (e.g. 4.17) |
-| `--spoke-release` | `nightly` | Spoke cluster release type |
-| `--spoke-full-tag` | — | Spoke cluster full OCP tag |
-| `--type` | `sno` | ZTP type: `sno` or `mno` |
-| `--stop-before-deployment` | `false` | Stop before spoke deployment for manual GitOps changes |
-| `--vm-masters` | `3` | Number of VM masters (MNO only) |
-| `--bm-masters` | — | Comma-separated baremetal master hosts (MNO only) |
-| `--bm-workers` | — | Comma-separated baremetal worker hosts |
+| `--owner` | — | Username |
+| `--email` | — | Notification email |
+| `--ocp-tag` | — | OCP tag (e.g. `4.17`) |
+| `--release-type` | `nightly` | `nightly` or `ci` |
+| `--full-ocp-tag` | — | Full OCP tag; overrides `--ocp-tag` and `--release-type` |
+| `--full-image` | — | Full image reference; overrides tag flags |
+| `--confirm` | `false` | Confirm provisioning (required unless `--dry-run`) |
+| `--dry-run` | `false` | Print the request without submitting |
+
+## sno kubeconfig
+
+```bash
+succulent-cli sno kubeconfig --env myenv
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dest` | `~/Downloads/succulent/{env}/sno-kubeconfig` | Local destination path |
+
+## ztp provision
+
+```bash
+succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--owner` | — | Username |
+| `--email` | — | Notification email |
+| `--sno-tag` | — | Hub (SNO) OCP tag |
+| `--sno-release` | `nightly` | Hub release type |
+| `--sno-full-tag` | — | Hub full OCP tag |
+| `--spoke-tag` | — | Spoke OCP tag |
+| `--spoke-release` | `nightly` | Spoke release type |
+| `--spoke-full-tag` | — | Spoke full OCP tag |
+| `--type` | `sno` | `sno` or `mno` |
+| `--stop-before-deployment` | `false` | Stop before spoke deployment |
+| `--vm-masters` | `3` | VM masters (MNO only) |
+| `--bm-masters` | — | Comma-separated baremetal masters (MNO only) |
+| `--bm-workers` | — | Comma-separated baremetal workers |
 | `--vm-workers` | `1` | Number of VM workers |
-| `--confirm` | `false` | Confirm provisioning (required) |
+| `--confirm` | `false` | Confirm provisioning (required unless `--dry-run`) |
+| `--dry-run` | `false` | Print the request without submitting |
 
-## ZTP / Hypershift Kubeconfig
+## ztp kubeconfig
+
+```bash
+succulent-cli ztp kubeconfig --env myenv --choice management
+succulent-cli ztp kubeconfig --env myenv --choice spoke
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--choice` | — | Kubeconfig type (required): `management`, `spoke`, or `hosted` |
-| `--dest` | `~/Downloads/{env}-{type}-kubeconfig` | Local destination path |
+| `--choice` | — | Required: `management` or `spoke` |
+| `--dest` | `~/Downloads/succulent/{env}/ztp-{choice}-kubeconfig` | Local destination path |
 
-## Hypershift Provision
+## hypershift provision
+
+```bash
+succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17 --confirm
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--owner` | — | Username (required) |
-| `--email` | — | Email address (required) |
-| `--sno-tag` | — | Management cluster OCP tag (e.g. 4.17) |
-| `--sno-release` | `nightly` | Management cluster release type |
-| `--sno-full-tag` | — | Management cluster full OCP tag |
-| `--hcp-tag` | — | Hosted cluster OCP tag (e.g. 4.17) |
-| `--hcp-release` | `nightly` | Hosted cluster release type |
-| `--hcp-full-tag` | — | Hosted cluster full OCP tag |
-| `--vm-workers` | `0` | Number of VM workers for hosted cluster |
+| `--owner` | — | Username |
+| `--email` | — | Notification email |
+| `--sno-tag` | — | Management cluster OCP tag |
+| `--sno-release` | `nightly` | Management release type |
+| `--sno-full-tag` | — | Management full OCP tag |
+| `--hcp-tag` | — | Hosted cluster OCP tag |
+| `--hcp-release` | `nightly` | Hosted release type |
+| `--hcp-full-tag` | — | Hosted full OCP tag |
+| `--vm-workers` | `0` | VM workers for the hosted cluster |
 | `--image-override` | — | Hypershift operator image override |
-| `--confirm` | `false` | Confirm provisioning (required) |
+| `--confirm` | `false` | Confirm provisioning (required unless `--dry-run`) |
+| `--dry-run` | `false` | Print the request without submitting |
 
-## Kubeconfig Fetch
+## hypershift kubeconfig
 
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--user` | `root` | Remote SSH user |
-| `--path` | `/root/ocp/auth/kubeconfig` | Remote kubeconfig path |
-| `--dest` | `~/Downloads/{env}-kubeconfig` | Local destination path |
-| `--wait` | `false` | Wait for all nodes to be up first |
-| `--max-wait` | `60` | Maximum wait time in minutes |
-| `--poll-interval` | `30` | Seconds between status checks |
-
-## Delete
+```bash
+succulent-cli hypershift kubeconfig --env myenv --choice management
+succulent-cli hypershift kubeconfig --env myenv --choice hosted
+```
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--confirm` | `false` | Confirm deletion (required) |
+| `--choice` | — | Required: `management` or `hosted` |
+| `--dest` | `~/Downloads/succulent/{env}/hypershift-{choice}-kubeconfig` | Local destination path |
+
+## kubeconfig fetch
+
+```bash
+succulent-cli kubeconfig fetch --env myenv
+succulent-cli kubeconfig fetch --env myenv --wait --strict-ssh
+```
+
+SSH host key checking is off by default (`StrictHostKeyChecking=no`). `--strict-ssh` uses `~/.ssh/known_hosts`.
+
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--user` | `SUCCULENT_REMOTE_USER` | `root` | Remote SSH user |
+| `--password` | `SUCCULENT_REMOTE_PASSWORD` | — | SSH password (requires `sshpass`) |
+| `--path` | `SUCCULENT_REMOTE_PATH` | `/root/ocp/auth/kubeconfig` | Remote kubeconfig path |
+| `--dest` | — | `~/Downloads/succulent/{env}/kubeconfig` | Local destination path |
+| `--wait` | — | `false` | Wait for nodes to be up first |
+| `--control-plane-only` | — | `false` | With `--wait`, ready when installer and masters are up |
+| `--max-wait` | — | `60` | Maximum wait in minutes |
+| `--poll-interval` | — | `30` | Seconds between status checks |
+| `--strict-ssh` | `SUCCULENT_STRICT_SSH` | `false` | Enable SSH host key checking |
+
+## delete
+
+```bash
+succulent-cli delete --env myenv --confirm
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--confirm` | `false` | Confirm deletion (required unless `--dry-run`) |
+| `--dry-run` | `false` | Print the action without deleting |
+
+## config
+
+```bash
+succulent-cli config init
+succulent-cli config show
+succulent-cli config path
+succulent-cli config set url https://succulent.example.com
+succulent-cli config edit
+succulent-cli config cache status
+succulent-cli config cache show
+succulent-cli config cache clear
+```
+
+See [Configuration](configuration.md).
+
+## completion install
+
+```bash
+succulent-cli completion install
+succulent-cli completion install bash
+succulent-cli completion install --dry-run
+```
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--dry-run` | `false` | Print the planned changes |
+| `--shell` | auto | `bash`, `zsh`, or `fish` |
+
+## version
+
+```bash
+succulent-cli version
+```
+
+No command-specific flags.

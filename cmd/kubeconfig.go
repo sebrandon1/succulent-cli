@@ -90,7 +90,7 @@ func init() {
 	fetchKubeconfigCmd.Flags().StringVar(&remoteUser, "user", defaultRemoteUser, "Remote SSH user")
 	fetchKubeconfigCmd.Flags().StringVar(&remotePassword, "password", "", "SSH password (requires sshpass)")
 	fetchKubeconfigCmd.Flags().StringVar(&remotePath, "path", defaultRemotePath, "Remote kubeconfig path")
-	fetchKubeconfigCmd.Flags().StringVar(&destPath, "dest", "", "Local destination path (default: ~/Downloads/{env}-kubeconfig)")
+	fetchKubeconfigCmd.Flags().StringVar(&destPath, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/kubeconfig)")
 	fetchKubeconfigCmd.Flags().BoolVar(&waitForReady, "wait", false, "Wait for cluster nodes to be up before fetching")
 	fetchKubeconfigCmd.Flags().BoolVar(&strictSSH, "strict-ssh", false, "Enable SSH host key checking (insecure checking is the lab default)")
 	fetchKubeconfigCmd.Flags().BoolVar(&controlPlaneOnly, "control-plane-only", false, "With --wait, report ready when installer and masters are up")

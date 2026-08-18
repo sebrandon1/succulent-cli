@@ -108,5 +108,5 @@ func init() {
 	snoProvisionCmd.Flags().BoolVar(&confirmSNO, "confirm", false, "Confirm provisioning (required)")
 	snoProvisionCmd.Flags().BoolVar(&dryRunSNO, "dry-run", false, "Show what would be sent without executing")
 
-	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/{env}-sno-kubeconfig)")
+	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/sno-kubeconfig)")
 }
