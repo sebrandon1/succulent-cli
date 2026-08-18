@@ -29,7 +29,7 @@ func (c *Client) GetInfoPlan(ctx context.Context, env string) (*ClusterInfo, err
 	}
 	defer resp.Body.Close()
 
-	return parseInfoPlan(env, resp.Body)
+	return parseInfoPlan(env, limitedBody(resp.Body, MaxResponseSize))
 }
 
 func parseInfoPlan(env string, r io.Reader) (*ClusterInfo, error) {

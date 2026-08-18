@@ -245,3 +245,16 @@ func TestListEnvironmentsWithInfo(t *testing.T) {
 		t.Errorf("Expected env2 node_count 0, got %d", details[1].NodeCount)
 	}
 }
+
+func TestListEnvironmentsBodyTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, oversizedBody())
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.ListEnvironments(context.Background())
+	assertTruncated(t, err)
+}

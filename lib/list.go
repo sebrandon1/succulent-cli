@@ -21,7 +21,7 @@ func (c *Client) ListEnvironments(ctx context.Context) ([]EnvironmentInfo, error
 	}
 	defer resp.Body.Close()
 
-	return parseEnvironmentList(resp.Body)
+	return parseEnvironmentList(limitedBody(resp.Body, MaxResponseSize))
 }
 
 func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, cache *Cache, w io.Writer) ([]EnvironmentDetail, error) {

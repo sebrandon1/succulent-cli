@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -208,4 +209,17 @@ func TestGetInfoPlanSingleCellRow(t *testing.T) {
 	if len(info.Nodes) != 1 {
 		t.Errorf("Expected 1 node (single-cell row skipped), got %d", len(info.Nodes))
 	}
+}
+
+func TestGetInfoPlanBodyTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, oversizedBody())
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.GetInfoPlan(context.Background(), testEnv)
+	assertTruncated(t, err)
 }

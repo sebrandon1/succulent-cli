@@ -15,7 +15,7 @@ func (c *Client) StreamLog(ctx context.Context, env string, w io.Writer) error {
 	}
 	defer resp.Body.Close()
 
-	if _, err := io.Copy(w, resp.Body); err != nil {
+	if err := copyLimited(w, resp.Body, MaxResponseSize); err != nil {
 		return fmt.Errorf("error streaming log: %w", err)
 	}
 

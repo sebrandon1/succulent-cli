@@ -62,7 +62,7 @@ and check basic API availability without side effects.`,
 			os.Exit(1)
 		}
 		defer func() {
-			_, _ = io.Copy(io.Discard, resp.Body)
+			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, lib.MaxResponseSize))
 			resp.Body.Close()
 		}()
 

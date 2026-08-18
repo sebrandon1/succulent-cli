@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
@@ -20,7 +21,7 @@ const (
 	DefaultSucculentURL = "https://succulent.eng.redhat.com"
 
 	// Size limits for response body reads to prevent memory exhaustion
-	maxKubeconfigSize = 10 * 1024 * 1024 // 10MB for kubeconfig/binary data
+	MaxResponseSize = 10 * 1024 * 1024 // 10MB for kubeconfig, HTML, and log data
 
 	// Error message hints for common troubleshooting
 	errHintCheckSettings = "check --url and --verify-ssl settings"
@@ -237,7 +238,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 	defer resp.Body.Close()
 
-	body, err := readLimited(resp.Body, maxKubeconfigSize)
+	body, err := readLimited(resp.Body, MaxResponseSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
@@ -250,18 +251,69 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 }
 
 func readLimited(r io.Reader, limit int64) ([]byte, error) {
-	data, err := io.ReadAll(io.LimitReader(r, limit+1))
-	if err != nil {
+	var buf bytes.Buffer
+	if err := copyLimited(&buf, r, limit); err != nil {
 		return nil, err
 	}
 
-	if int64(len(data)) > limit {
-		return nil, fmt.Errorf("response exceeded %s limit %s",
-			humanizeBytes(limit),
-			fmt.Sprintf(errHintTruncated, humanizeBytes(limit)))
+	return buf.Bytes(), nil
+}
+
+func copyLimited(dst io.Writer, src io.Reader, limit int64) error {
+	_, err := io.Copy(dst, limitedBody(src, limit))
+
+	return err
+}
+
+// limitedBody wraps r so reads stop at limit bytes. A further byte from r
+// yields errResponseTooLarge instead of writing past the cap.
+func limitedBody(r io.Reader, limit int64) io.Reader {
+	return &cappedReader{r: r, limit: limit}
+}
+
+type cappedReader struct {
+	r     io.Reader
+	limit int64
+	read  int64
+}
+
+func (c *cappedReader) Read(p []byte) (int, error) {
+	if c.read > c.limit {
+		return 0, errResponseTooLarge(c.limit)
 	}
 
-	return data, nil
+	if c.read == c.limit {
+		var extra [1]byte
+
+		n, err := c.r.Read(extra[:])
+		if n > 0 {
+			c.read++
+
+			return 0, errResponseTooLarge(c.limit)
+		}
+
+		if err != nil {
+			return 0, err
+		}
+
+		return 0, io.EOF
+	}
+
+	remain := c.limit - c.read
+	if int64(len(p)) > remain {
+		p = p[:remain]
+	}
+
+	n, err := c.r.Read(p)
+	c.read += int64(n)
+
+	return n, err
+}
+
+func errResponseTooLarge(limit int64) error {
+	return fmt.Errorf("response exceeded %s limit %s",
+		humanizeBytes(limit),
+		fmt.Sprintf(errHintTruncated, humanizeBytes(limit)))
 }
 
 func humanizeBytes(b int64) string {
