@@ -137,7 +137,7 @@ func installCompletion(rootCmd *cobra.Command, shell string, dryRun bool) error 
 		return nil
 	}
 
-	if err := os.MkdirAll(completionDir, 0o755); err != nil {
+	if err := os.MkdirAll(completionDir, 0o750); err != nil {
 		return fmt.Errorf("creating completion directory: %w", err)
 	}
 
@@ -188,11 +188,11 @@ func generateCompletionScript(rootCmd *cobra.Command, shell string) (string, err
 
 func addSourceLine(rcFile, sourceLine string) error {
 	rcDir := filepath.Dir(rcFile)
-	if err := os.MkdirAll(rcDir, 0o755); err != nil {
+	if err := os.MkdirAll(rcDir, 0o750); err != nil {
 		return fmt.Errorf("creating rc directory: %w", err)
 	}
 
-	content, err := os.ReadFile(rcFile)
+	content, err := os.ReadFile(rcFile) // #nosec G304 -- rc path is derived from the home directory
 	if err != nil {
 		if os.IsNotExist(err) {
 			return os.WriteFile(rcFile, []byte(sourceLine+"\n"), 0o600)
@@ -212,7 +212,7 @@ func addSourceLine(rcFile, sourceLine string) error {
 	updatedContent += "\n# succulent-cli completion\n"
 	updatedContent += sourceLine + "\n"
 
-	// #nosec G703 - rcFile path is constructed from os.UserHomeDir() and fixed paths, no user input
+	// #nosec G703 -- rc path is derived from the home directory and a fixed filename
 	if err := os.WriteFile(rcFile, []byte(updatedContent), 0o600); err != nil {
 		return fmt.Errorf("writing rc file: %w", err)
 	}

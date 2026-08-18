@@ -63,7 +63,7 @@ func RemoveSSHHostKey(ip string) error {
 		return err
 	}
 
-	cmd := exec.Command("ssh-keygen", "-R", ip) //nolint:gosec
+	cmd := exec.Command("ssh-keygen", "-R", ip) // #nosec G204 -- ip is validated by validateIP
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -96,7 +96,7 @@ func FetchKubeconfig(ip, user, password, remotePath, destPath string) error {
 		return fmt.Errorf("failed to set file permissions: %w", err)
 	}
 
-	data, err := os.ReadFile(destPath)
+	data, err := os.ReadFile(destPath) // #nosec G304 -- dest path is chosen by the caller after MkdirAll
 	if err != nil {
 		return fmt.Errorf("failed to read downloaded kubeconfig: %w", err)
 	}
@@ -119,13 +119,13 @@ func buildSCPCommand(ip, user, password, remotePath, destPath string) *exec.Cmd 
 
 	if password != "" {
 		args := append([]string{"-e", "scp"}, scpArgs...)
-		cmd := exec.Command("sshpass", args...) //nolint:gosec
+		cmd := exec.Command("sshpass", args...) // #nosec G204 -- ip is validated; password is passed via SSHPASS
 		cmd.Env = append(os.Environ(), "SSHPASS="+password)
 
 		return cmd
 	}
 
-	return exec.Command("scp", scpArgs...) //nolint:gosec
+	return exec.Command("scp", scpArgs...) // #nosec G204 -- ip is validated by validateIP
 }
 
 func formatNodeSummary(nodes []NodeInfo) string {
