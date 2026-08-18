@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"strings"
 
@@ -105,7 +106,7 @@ func parseNodeRow(name, status string, cells []string) *NodeInfo {
 	}
 
 	if len(cells) > 2 {
-		if match := ipRegex.FindString(cells[2]); match != "" {
+		if match := ipRegex.FindString(cells[2]); match != "" && net.ParseIP(match) != nil {
 			node.IP = match
 		}
 	}
