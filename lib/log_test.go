@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -47,4 +48,18 @@ func TestStreamLogError(t *testing.T) {
 	if err := client.StreamLog(context.Background(), testEnv, &buf); err == nil {
 		t.Fatal("Expected error for 404 response, got nil")
 	}
+}
+
+func TestStreamLogBodyTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, oversizedBody())
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	var buf bytes.Buffer
+	err := client.StreamLog(context.Background(), testEnv, &buf)
+	assertTruncated(t, err)
 }

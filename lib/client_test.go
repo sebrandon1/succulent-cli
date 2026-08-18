@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -270,6 +271,56 @@ func TestReadLimited(t *testing.T) {
 			if !tt.wantErr && !bytes.Equal(result, tt.data) {
 				t.Errorf("Expected data to match input")
 			}
+		})
+	}
+}
+
+func TestCopyLimitedDoesNotWriteOverflowByte(t *testing.T) {
+	var buf bytes.Buffer
+	data := bytes.Repeat([]byte("a"), 101)
+
+	err := copyLimited(&buf, bytes.NewReader(data), 100)
+	assertTruncated(t, err)
+
+	if buf.Len() != 100 {
+		t.Errorf("copyLimited wrote %d bytes, want 100 (overflow byte must not be copied)", buf.Len())
+	}
+}
+
+func TestCopyLimitedReadError(t *testing.T) {
+	err := copyLimited(io.Discard, errReader{}, 100)
+	if err == nil {
+		t.Fatal("Expected read error from copyLimited, got nil")
+	}
+}
+
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) {
+	return 0, io.ErrUnexpectedEOF
+}
+
+func TestPostFormRawBodyTooLarge(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+	}{
+		{"success status", http.StatusOK},
+		{"error status", http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = io.Copy(w, oversizedBody())
+			}))
+			defer server.Close()
+
+			client := newTestClient(server.URL)
+
+			_, err := client.postFormRaw(context.Background(), server.URL+"/test", nil)
+			assertTruncated(t, err)
 		})
 	}
 }

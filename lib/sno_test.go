@@ -2,6 +2,7 @@ package lib
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -135,4 +136,17 @@ func TestProvisionSNOWithFullTag(t *testing.T) {
 	if err := client.ProvisionSNO(context.Background(), testEnv, req); err != nil {
 		t.Fatalf("ProvisionSNO failed: %v", err)
 	}
+}
+
+func TestGetSNOKubeconfigBodyTooLarge(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = io.Copy(w, oversizedBody())
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	_, err := client.GetSNOKubeconfig(context.Background(), testEnv)
+	assertTruncated(t, err)
 }
