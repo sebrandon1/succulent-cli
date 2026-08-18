@@ -19,9 +19,14 @@ const (
 )
 
 var validConfigKeys = []string{
-	"url", "env", "verify_ssl",
+	"url", "env", "verify_ssl", "strict_ssh",
 	"remote_user", "remote_path",
 	"default_email", "default_owner",
+}
+
+var boolConfigKeys = map[string]bool{
+	"verify_ssl": true,
+	"strict_ssh": true,
 }
 
 var configCmd = &cobra.Command{
@@ -34,19 +39,13 @@ var configShowCmd = &cobra.Command{
 	Short:   "Show the resolved configuration",
 	Example: `  succulent-cli config show`,
 	RunE: func(_ *cobra.Command, _ []string) error {
-		keys := []string{
-			"url", "env", "verify_ssl",
-			"remote_user", "remote_path",
-			"default_email", "default_owner",
-		}
-
 		if f := viper.ConfigFileUsed(); f != "" {
 			fmt.Printf("Config file: %s\n\n", f)
 		} else {
 			fmt.Printf("Config file: (none)\n\n")
 		}
 
-		for _, key := range keys {
+		for _, key := range validConfigKeys {
 			fmt.Printf("%-16s %v\n", key+":", viper.Get(key))
 		}
 
@@ -92,6 +91,7 @@ var configInitCmd = &cobra.Command{
 # url: "https://succulent.example.com"
 # env: "myenv"
 # verify_ssl: false
+# strict_ssh: false
 # remote_user: "root"
 # remote_path: "/root/ocp/auth/kubeconfig"
 # default_email: "user@example.com"
@@ -113,7 +113,8 @@ var configSetCmd = &cobra.Command{
 	Short: "Set a configuration value",
 	Example: `  succulent-cli config set url https://succulent.example.com
   succulent-cli config set default_email user@example.com
-  succulent-cli config set verify_ssl true`,
+  succulent-cli config set verify_ssl true
+  succulent-cli config set strict_ssh true`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(_ *cobra.Command, args []string) error {
 		key := args[0]
@@ -133,10 +134,10 @@ var configSetCmd = &cobra.Command{
 		}
 
 		// Type coercion for boolean
-		if key == "verify_ssl" {
+		if boolConfigKeys[key] {
 			boolVal, err := strconv.ParseBool(value)
 			if err != nil {
-				return fmt.Errorf("verify_ssl must be a boolean (true/false/yes/no/1/0)")
+				return fmt.Errorf("%s must be a boolean (true/false/yes/no/1/0)", key)
 			}
 			viper.Set(key, boolVal)
 		} else {

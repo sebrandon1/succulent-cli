@@ -129,6 +129,7 @@ func initConfig() {
 	viper.SetDefault("verify_ssl", false)
 	viper.SetDefault("remote_user", defaultRemoteUser)
 	viper.SetDefault("remote_path", defaultRemotePath)
+	viper.SetDefault("strict_ssh", false)
 	viper.SetDefault("default_email", "")
 	viper.SetDefault("default_owner", "")
 
