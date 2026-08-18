@@ -39,8 +39,20 @@ func ValidateKubeconfig(data []byte) error {
 }
 
 func validateIP(ip string) error {
-	if net.ParseIP(ip) == nil {
+	parsed := net.ParseIP(ip)
+	if parsed == nil {
 		return fmt.Errorf("invalid IP address: %q", ip)
+	}
+
+	switch {
+	case parsed.IsUnspecified():
+		return fmt.Errorf("invalid IP address: %q (unspecified)", ip)
+	case parsed.IsLoopback():
+		return fmt.Errorf("invalid IP address: %q (loopback)", ip)
+	case parsed.IsLinkLocalUnicast(), parsed.IsLinkLocalMulticast():
+		return fmt.Errorf("invalid IP address: %q (link-local)", ip)
+	case parsed.IsMulticast():
+		return fmt.Errorf("invalid IP address: %q (multicast)", ip)
 	}
 
 	return nil

@@ -85,14 +85,21 @@ func TestValidateIP(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid IPv4", "192.168.1.100", false},
-		{"valid IPv6", "::1", false},
-		{"valid IPv6 full", "2001:db8::1", false},
+		{"valid private 10.x", "10.0.0.1", false},
+		{"valid IPv6", "2001:db8::1", false},
 		{"empty string", "", true},
 		{"invalid octets", "999.999.999.999", true},
 		{"shell metacharacters", "192.168.1.1; rm -rf /", true},
 		{"command injection", "$(whoami)", true},
 		{"hostname not IP", "example.com", true},
 		{"partial IP", "192.168", true},
+		{"loopback IPv4", "127.0.0.1", true},
+		{"loopback IPv6", "::1", true},
+		{"unspecified IPv4", "0.0.0.0", true},
+		{"unspecified IPv6", "::", true},
+		{"link-local IPv4", "169.254.1.1", true},
+		{"link-local IPv6", "fe80::1", true},
+		{"multicast IPv4", "224.0.0.1", true},
 	}
 
 	for _, tt := range tests {
@@ -106,25 +113,9 @@ func TestValidateIP(t *testing.T) {
 }
 
 func TestRemoveSSHHostKeyInvalidIP(t *testing.T) {
-	err := RemoveSSHHostKey("not-an-ip")
-	if err == nil {
-		t.Fatal("Expected error for invalid IP")
-	}
-
-	if !strings.Contains(err.Error(), "invalid IP address") {
-		t.Errorf("Expected 'invalid IP address' error, got: %v", err)
-	}
-}
-
-func TestFetchKubeconfigInvalidIP(t *testing.T) {
-	for _, password := range []string{"", "secret"} {
-		name := "no password"
-		if password != "" {
-			name = "with password"
-		}
-
-		t.Run(name, func(t *testing.T) {
-			err := FetchKubeconfig("not-an-ip", "root", password, "/path", "/dest")
+	for _, ip := range []string{"not-an-ip", "127.0.0.1", "0.0.0.0"} {
+		t.Run(ip, func(t *testing.T) {
+			err := RemoveSSHHostKey(ip)
 			if err == nil {
 				t.Fatal("Expected error for invalid IP")
 			}
@@ -133,6 +124,30 @@ func TestFetchKubeconfigInvalidIP(t *testing.T) {
 				t.Errorf("Expected 'invalid IP address' error, got: %v", err)
 			}
 		})
+	}
+}
+
+func TestFetchKubeconfigInvalidIP(t *testing.T) {
+	ips := []string{"not-an-ip", "127.0.0.1", "169.254.1.1", "0.0.0.0"}
+
+	for _, ip := range ips {
+		for _, password := range []string{"", "secret"} {
+			name := ip + "/no password"
+			if password != "" {
+				name = ip + "/with password"
+			}
+
+			t.Run(name, func(t *testing.T) {
+				err := FetchKubeconfig(ip, "root", password, "/path", "/dest")
+				if err == nil {
+					t.Fatal("Expected error for invalid IP")
+				}
+
+				if !strings.Contains(err.Error(), "invalid IP address") {
+					t.Errorf("Expected 'invalid IP address' error, got: %v", err)
+				}
+			})
+		}
 	}
 }
 
@@ -540,6 +555,17 @@ func TestParseNodeRowErrorStatus(t *testing.T) {
 				t.Errorf("Expected status %q, got %q", status, node.Status)
 			}
 		})
+	}
+}
+
+func TestParseNodeRowInvalidIP(t *testing.T) {
+	node := parseNodeRow("test-node", "up", []string{"test-node", "up", "999.999.999.999"})
+	if node == nil {
+		t.Fatal("Expected node for valid status, got nil")
+	}
+
+	if node.IP != "" {
+		t.Errorf("Expected invalid IP to be ignored, got %q", node.IP)
 	}
 }
 
