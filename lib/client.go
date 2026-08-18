@@ -68,11 +68,12 @@ func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Cli
 
 func NewClientWithTimeout(baseURL string, insecureSkipVerify bool, caCertPath string, timeout time.Duration) (*Client, error) {
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: insecureSkipVerify, //nolint:gosec
+		InsecureSkipVerify: insecureSkipVerify, // #nosec G402 -- lab self-signed certs; --verify-ssl enables verification
 	}
 
 	if caCertPath != "" {
-		caCert, err := os.ReadFile(caCertPath) //nolint:gosec
+		caCert, err := os.ReadFile(caCertPath) // #nosec G304 -- CA path is an explicit user-supplied flag
+
 		if err != nil {
 			return nil, fmt.Errorf("reading CA certificate: %w", err)
 		}

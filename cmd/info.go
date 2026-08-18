@@ -42,16 +42,14 @@ var infoCmd = &cobra.Command{
 		}
 
 		if outputFormat == "table" {
-			printInfoTable(info)
-
-			return nil
+			return printInfoTable(info)
 		}
 
 		return printJSON(info)
 	},
 }
 
-func printInfoTable(info *lib.ClusterInfo) {
+func printInfoTable(info *lib.ClusterInfo) error {
 	if info.PlanName != "" {
 		fmt.Printf("Plan: %s", info.PlanName)
 
@@ -84,7 +82,7 @@ func printInfoTable(info *lib.ClusterInfo) {
 		fmt.Fprintf(w, "%s\t%s\t%s\n", node.Name, node.Status, ip)
 	}
 
-	w.Flush()
+	return w.Flush()
 }
 
 func init() {

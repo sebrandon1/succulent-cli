@@ -177,7 +177,7 @@ var configEditCmd = &cobra.Command{
 			editor = "vi"
 		}
 
-		cmd := exec.Command(editor, configPath)
+		cmd := exec.Command(editor, configPath) // #nosec G204 -- editor is $EDITOR or vi; path is the local config file
 		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -226,7 +226,7 @@ var cacheShowCmd = &cobra.Command{
 	RunE: func(_ *cobra.Command, _ []string) error {
 		cachePath := filepath.Join(configDir(), cacheFileName)
 
-		data, err := os.ReadFile(cachePath)
+		data, err := os.ReadFile(cachePath) // #nosec G304 -- path is under the CLI config directory
 		if err != nil {
 			if os.IsNotExist(err) {
 				fmt.Println("No cache file found")
@@ -287,7 +287,7 @@ var cacheStatusCmd = &cobra.Command{
 
 		fmt.Printf("Cache location: %s\n", cachePath)
 
-		data, err := os.ReadFile(cachePath)
+		data, err := os.ReadFile(cachePath) // #nosec G304 -- path is under the CLI config directory
 		if err != nil {
 			if os.IsNotExist(err) {
 				fmt.Println("Status: Cache file does not exist")
