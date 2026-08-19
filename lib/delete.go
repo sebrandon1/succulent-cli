@@ -7,13 +7,11 @@ import (
 )
 
 func (c *Client) DeleteEnvironment(ctx context.Context, env string) error {
-	endpoint := c.BaseURL + endpointDelete
-
 	data := url.Values{
 		"plan": {env},
 	}
 
-	if err := c.postForm(ctx, endpoint, data); err != nil {
+	if err := c.postForm(ctx, c.endpointURL(endpointDelete), data); err != nil {
 		return fmt.Errorf("failed to delete %s: %w", env, err)
 	}
 

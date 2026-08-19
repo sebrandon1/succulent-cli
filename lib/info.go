@@ -22,9 +22,7 @@ var (
 )
 
 func (c *Client) GetInfoPlan(ctx context.Context, env string) (*ClusterInfo, error) {
-	requestURL := fmt.Sprintf("%s"+endpointInfoPlan, c.BaseURL, env)
-
-	resp, err := c.getRaw(ctx, requestURL)
+	resp, err := c.getRaw(ctx, c.endpointURL(endpointInfoPlan, env))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch infoplan for %s: %w", env, err)
 	}

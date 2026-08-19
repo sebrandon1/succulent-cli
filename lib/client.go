@@ -127,6 +127,20 @@ func (c *Client) WithTimeout(timeout time.Duration) *Client {
 	}
 }
 
+func (c *Client) endpointURL(pathFmt string, args ...any) string {
+	path := pathFmt
+	if len(args) > 0 {
+		path = fmt.Sprintf(pathFmt, args...)
+	}
+
+	joined, err := url.JoinPath(c.BaseURL, path)
+	if err != nil {
+		return strings.TrimRight(c.BaseURL, "/") + "/" + strings.TrimLeft(path, "/")
+	}
+
+	return joined
+}
+
 func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {
 	var lastErr error
 

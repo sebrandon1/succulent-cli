@@ -347,6 +347,60 @@ func TestHumanizeBytes(t *testing.T) {
 	}
 }
 
+func TestEndpointURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		baseURL string
+		pathFmt string
+		args    []any
+		want    string
+	}{
+		{
+			name:    "no-args path",
+			baseURL: "https://example.com",
+			pathFmt: endpointDelete,
+			want:    "https://example.com/exposedelete",
+		},
+		{
+			name:    "env interpolation",
+			baseURL: "https://example.com",
+			pathFmt: endpointInfoPlan,
+			args:    []any{"myenv"},
+			want:    "https://example.com/infoplan/myenv",
+		},
+		{
+			name:    "trailing slash on BaseURL",
+			baseURL: "https://example.com/",
+			pathFmt: endpointSNOProvision,
+			args:    []any{"env1"},
+			want:    "https://example.com/sno/env1",
+		},
+		{
+			name:    "root path",
+			baseURL: "https://example.com",
+			pathFmt: endpointRoot,
+			want:    "https://example.com/",
+		},
+		{
+			name:    "JoinPath fallback on invalid BaseURL",
+			baseURL: "://bad",
+			pathFmt: endpointDelete,
+			want:    "://bad/exposedelete",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Client{BaseURL: tt.baseURL}
+
+			got := c.endpointURL(tt.pathFmt, tt.args...)
+			if got != tt.want {
+				t.Errorf("endpointURL(%q, %v) = %q, want %q", tt.pathFmt, tt.args, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestWithTimeout(t *testing.T) {
 	client, err := NewClient("https://example.com", true, "")
 	if err != nil {

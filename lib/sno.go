@@ -6,9 +6,7 @@ import (
 )
 
 func (c *Client) ProvisionSNO(ctx context.Context, env string, req *SNOProvisionRequest) error {
-	endpoint := fmt.Sprintf("%s"+endpointSNOProvision, c.BaseURL, env)
-
-	if err := c.postForm(ctx, endpoint, req.FormValues()); err != nil {
+	if err := c.postForm(ctx, c.endpointURL(endpointSNOProvision, env), req.FormValues()); err != nil {
 		return fmt.Errorf("failed to provision SNO on %s: %w", env, err)
 	}
 
@@ -16,9 +14,7 @@ func (c *Client) ProvisionSNO(ctx context.Context, env string, req *SNOProvision
 }
 
 func (c *Client) GetSNOKubeconfig(ctx context.Context, env string) ([]byte, error) {
-	requestURL := fmt.Sprintf("%s"+endpointSNOKubeconfig, c.BaseURL, env)
-
-	resp, err := c.getRaw(ctx, requestURL)
+	resp, err := c.getRaw(ctx, c.endpointURL(endpointSNOKubeconfig, env))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch SNO kubeconfig for %s: %w", env, err)
 	}

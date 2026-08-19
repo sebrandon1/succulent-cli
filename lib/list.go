@@ -15,7 +15,7 @@ import (
 var infoplanLinkRegex = regexp.MustCompile(`/infoplan/([a-zA-Z0-9_-]+)`)
 
 func (c *Client) ListEnvironments(ctx context.Context) ([]EnvironmentInfo, error) {
-	resp, err := c.getRaw(ctx, c.BaseURL+endpointRoot)
+	resp, err := c.getRaw(ctx, c.endpointURL(endpointRoot))
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch environment list: %w", err)
 	}

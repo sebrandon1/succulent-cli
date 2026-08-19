@@ -68,6 +68,7 @@ succulent-cli
 - `list` caches `ClusterInfo` as JSON (60s TTL). `--output json` switches table commands to JSON; `--filter` / `--sort` apply to `list`.
 - Tests use `httptest.NewServer`.
 - Version: `-ldflags "-X main.version=$(VERSION)"`.
+- Construct API URLs with `c.endpointURL(...)`, not string concat or `fmt.Sprintf` on `BaseURL`.
 
 ## Adding a command
 
