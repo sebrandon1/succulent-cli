@@ -33,8 +33,10 @@ Viper reads `SUCCULENT_` plus the uppercase config key. These are the variables 
 | `SUCCULENT_REMOTE_PASSWORD` | — | `--password` | — | SSH password for `kubeconfig fetch` (requires `sshpass`) |
 | `SUCCULENT_DEFAULT_EMAIL` | `default_email` | — | — | Fallback for `--email` |
 | `SUCCULENT_DEFAULT_OWNER` | `default_owner` | — | — | Fallback for `--owner` |
+| `SUCCULENT_VERBOSE` | `verbose` | `--verbose`, `-v` | `false` | Debug logging to stderr |
+| `SUCCULENT_QUIET` | `quiet` | `--quiet` | `false` | Log errors only |
 
-`--output` and `--timeout` are flags only; they have no environment variables.
+`--output` and `--timeout` are flags only; they have no environment variables. `--verbose` and `--quiet` are flags/env only; they are not stored by `config set`. They cannot be set together.
 
 `config set` / `config show` / `config init` cover `url`, `env`, `verify_ssl`, `strict_ssh`, `remote_user`, `remote_path`, `default_email`, and `default_owner`. Prefer `SUCCULENT_REMOTE_PASSWORD` or `--password` over storing a password in the config file.
 
