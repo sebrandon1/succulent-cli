@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -53,6 +54,8 @@ and check basic API availability without side effects.`,
 			fmt.Printf("❌ Failed to create client: %v\n", err)
 			os.Exit(1)
 		}
+
+		client.Logger = slog.Default()
 
 		resp, err := client.HTTPClient.Get(baseURL)
 		if err != nil {

@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io"
+	"log/slog"
 	"math/big"
 	"net"
 	"net/http"
@@ -60,6 +61,7 @@ type Client struct {
 	MaxRetries     int
 	RetryBaseDelay time.Duration
 	Timeout        time.Duration
+	Logger         *slog.Logger
 }
 
 func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Client, error) {
@@ -124,7 +126,31 @@ func (c *Client) WithTimeout(timeout time.Duration) *Client {
 		MaxRetries:     c.MaxRetries,
 		RetryBaseDelay: c.RetryBaseDelay,
 		Timeout:        timeout,
+		Logger:         c.Logger,
 	}
+}
+
+func (c *Client) logger() *slog.Logger {
+	if c.Logger == nil {
+		return slog.New(slog.DiscardHandler)
+	}
+
+	return c.Logger
+}
+
+func (c *Client) logHTTP(method, requestURL string, status int, err error, d time.Duration) {
+	attrs := []any{"method", method, "url", requestURL, "duration", d}
+	if status != 0 {
+		attrs = append(attrs, "status", status)
+	}
+
+	if err != nil {
+		c.logger().Warn("http request failed", append(attrs, "err", err)...)
+
+		return
+	}
+
+	c.logger().Debug("http request", attrs...)
 }
 
 func (c *Client) endpointURL(pathFmt string, args ...any) string {
@@ -191,23 +217,32 @@ func (c *Client) sleepWithJitter(attempt int) {
 }
 
 func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response, error) {
+	start := time.Now()
 	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
 		return http.NewRequestWithContext(ctx, "GET", requestURL, nil)
 	})
 	if err != nil {
-		return nil, fmt.Errorf("%w (check --url and --verify-ssl settings)", err)
+		err = fmt.Errorf("%w (check --url and --verify-ssl settings)", err)
+		c.logHTTP(http.MethodGet, requestURL, 0, err, time.Since(start))
+
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
+		err = fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		c.logHTTP(http.MethodGet, requestURL, resp.StatusCode, err, time.Since(start))
 
-		return nil, fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		return nil, err
 	}
+
+	c.logHTTP(http.MethodGet, requestURL, resp.StatusCode, nil, time.Since(start))
 
 	return resp, nil
 }
 
 func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values) error {
+	start := time.Now()
 	encoded := data.Encode()
 
 	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
@@ -221,14 +256,22 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 		return req, nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
+		err = fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
+		c.logHTTP(http.MethodPost, endpoint, 0, err, time.Since(start))
+
+		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated &&
 		resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
-		return fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		err = fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, err, time.Since(start))
+
+		return err
 	}
+
+	c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, nil, time.Since(start))
 
 	return nil
 }
@@ -236,6 +279,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 // postFormRaw submits a form and returns the raw response body.
 // Used for endpoints that return binary data (e.g., kubeconfig files).
 func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Values) ([]byte, error) {
+	start := time.Now()
 	encoded := data.Encode()
 
 	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
@@ -249,18 +293,29 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 		return req, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
+		err = fmt.Errorf("failed to submit form: %w (check --url and --verify-ssl settings)", err)
+		c.logHTTP(http.MethodPost, endpoint, 0, err, time.Since(start))
+
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := readLimited(resp.Body, MaxResponseSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		err = fmt.Errorf("failed to read response body: %w", err)
+		c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, err, time.Since(start))
+
+		return nil, err
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		err = fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, err, time.Since(start))
+
+		return nil, err
 	}
+
+	c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, nil, time.Since(start))
 
 	return body, nil
 }

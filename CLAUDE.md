@@ -28,7 +28,7 @@ go test ./lib -v
 
 Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go-quay).
 
-**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `getRaw`, `postForm`, and `postFormRaw`. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
+**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `getRaw`, `postForm`, and `postFormRaw`. Optional `Logger *slog.Logger` (nil = no logs) records method, URL, status, and duration; form bodies and secrets are never logged. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
 
 | File | Role |
 |------|------|
@@ -43,7 +43,7 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 | `cache.go` | TTL JSON file cache |
 | `kubeconfig.go` | `RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig` (`os/exec`); `WaitForClusterReady` polls `GetInfoPlan` |
 
-**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
+**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--verbose`/`-v`, `--quiet`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
 
 ```text
 succulent-cli
@@ -69,6 +69,7 @@ succulent-cli
 - Tests use `httptest.NewServer`.
 - Version: `-ldflags "-X main.version=$(VERSION)"`.
 - Construct API URLs with `c.endpointURL(...)`, not string concat or `fmt.Sprintf` on `BaseURL`.
+- `--verbose`/`-v` and `--quiet` configure slog on stderr (debug / warn / error). `sharedClient.Logger` is `slog.Default()`. Do not log secrets (CA path, email, form bodies).
 
 ## Adding a command
 

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/sebrandon1/succulent-cli/lib"
@@ -216,5 +217,50 @@ func TestStrictSSHFlagExists(t *testing.T) {
 
 	if flag.DefValue != "false" {
 		t.Errorf("Expected --strict-ssh default 'false', got %q", flag.DefValue)
+	}
+}
+
+func TestVerboseFlagExists(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("verbose")
+	if flag == nil {
+		t.Fatal("Expected --verbose flag on rootCmd, not found")
+	}
+
+	if flag.DefValue != "false" {
+		t.Errorf("Expected --verbose default 'false', got %q", flag.DefValue)
+	}
+
+	if flag.Shorthand != "v" {
+		t.Errorf("Expected --verbose shorthand 'v', got %q", flag.Shorthand)
+	}
+}
+
+func TestQuietFlagExists(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("quiet")
+	if flag == nil {
+		t.Fatal("Expected --quiet flag on rootCmd, not found")
+	}
+
+	if flag.DefValue != "false" {
+		t.Errorf("Expected --quiet default 'false', got %q", flag.DefValue)
+	}
+}
+
+func TestFlagParsing_VerboseQuietConflict(t *testing.T) {
+	t.Cleanup(func() {
+		rootCmd.SetArgs(nil)
+		_ = rootCmd.PersistentFlags().Set("verbose", "false")
+		_ = rootCmd.PersistentFlags().Set("quiet", "false")
+	})
+
+	rootCmd.SetArgs([]string{"version", "--verbose", "--quiet"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("expected error when --verbose and --quiet are both set")
+	}
+
+	if !strings.Contains(err.Error(), "cannot both be set") {
+		t.Errorf("unexpected error: %v", err)
 	}
 }

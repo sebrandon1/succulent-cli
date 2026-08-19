@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -425,6 +426,14 @@ func TestWithTimeout(t *testing.T) {
 		t.Errorf("Expected same MaxRetries, got %d", newClient.MaxRetries)
 	}
 
+	logger := slog.New(slog.DiscardHandler)
+	client.Logger = logger
+
+	copied := client.WithTimeout(30 * time.Second)
+	if copied.Logger != logger {
+		t.Error("Expected Logger to be copied by WithTimeout")
+	}
+
 	if client.Timeout != 60*time.Second {
 		t.Error("Original client timeout should be unchanged")
 	}
@@ -476,4 +485,54 @@ func TestFriendlyHTTPError(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestClient_WithLogger_Verbose(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	var buf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+	client := newTestClient(server.URL)
+	client.Logger = logger
+
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
+	if err != nil {
+		t.Fatalf("getRaw: %v", err)
+	}
+	defer resp.Body.Close()
+
+	got := buf.String()
+	if !strings.Contains(got, "GET") {
+		t.Errorf("expected method GET in log, got %q", got)
+	}
+
+	if !strings.Contains(got, "/test") {
+		t.Errorf("expected URL path in log, got %q", got)
+	}
+
+	if !strings.Contains(got, "status=200") {
+		t.Errorf("expected status=200 in log, got %q", got)
+	}
+}
+
+func TestClient_NilLoggerNoPanic(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	client.Logger = nil
+
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
+	if err != nil {
+		t.Fatalf("nil logger should not panic, got %v", err)
+	}
+	defer resp.Body.Close()
 }

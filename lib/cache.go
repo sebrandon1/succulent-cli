@@ -3,6 +3,7 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
@@ -85,7 +86,7 @@ func (c *Cache) SetInfo(env string, info *ClusterInfo) {
 	}
 
 	if err := c.save(cf); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: cache save failed: %v\n", err)
+		slog.Default().Warn("cache save failed", "err", err)
 	}
 }
 
@@ -102,7 +103,7 @@ func (c *Cache) SetMultipleInfo(entries map[string]*ClusterInfo) {
 	}
 
 	if err := c.save(cf); err != nil {
-		fmt.Fprintf(os.Stderr, "warning: cache save failed: %v\n", err)
+		slog.Default().Warn("cache save failed", "err", err)
 	}
 }
 
