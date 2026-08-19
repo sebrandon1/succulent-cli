@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -37,6 +38,10 @@ management service.
 Supports cluster info, provisioning (MNO and SNO), log streaming,
 kubeconfig retrieval, and environment deletion.`,
 	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+		if err := setupLogger(); err != nil {
+			return err
+		}
+
 		if skipEnvValidation(cmd) {
 			return nil
 		}
@@ -51,6 +56,8 @@ kubeconfig retrieval, and environment deletion.`,
 		if err != nil {
 			return err
 		}
+
+		sharedClient.Logger = slog.Default()
 
 		sharedCache = lib.NewCache(configDir(), 60*time.Second)
 
@@ -115,6 +122,28 @@ func skipEnvValidation(cmd *cobra.Command) bool {
 	return false
 }
 
+func setupLogger() error {
+	verbose := viper.GetBool("verbose")
+	quiet := viper.GetBool("quiet")
+
+	if verbose && quiet {
+		return fmt.Errorf("--verbose and --quiet cannot both be set")
+	}
+
+	level := slog.LevelWarn
+	if quiet {
+		level = slog.LevelError
+	}
+
+	if verbose {
+		level = slog.LevelDebug
+	}
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level})))
+
+	return nil
+}
+
 func initConfig() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
@@ -151,11 +180,17 @@ func init() {
 		"Output format (json or table)")
 	rootCmd.PersistentFlags().IntVar(&httpTimeout, "timeout", 60,
 		"HTTP request timeout in seconds")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false,
+		"Enable debug logging to stderr")
+	rootCmd.PersistentFlags().Bool("quiet", false,
+		"Log errors only")
 
 	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
 	_ = viper.BindPFlag("env", rootCmd.PersistentFlags().Lookup("env"))
 	_ = viper.BindPFlag("verify_ssl", rootCmd.PersistentFlags().Lookup("verify-ssl"))
 	_ = viper.BindPFlag("ca_cert", rootCmd.PersistentFlags().Lookup("ca-cert"))
+	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(kubeconfigCmd)

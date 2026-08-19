@@ -12,6 +12,8 @@
 | `--ca-cert` | `SUCCULENT_CA_CERT` | — | Path to a CA certificate bundle (PEM) |
 | `--output`, `-o` | — | `table` | `json` or `table` |
 | `--timeout` | — | `60` | HTTP request timeout in seconds |
+| `--verbose`, `-v` | `SUCCULENT_VERBOSE` | `false` | Debug logging to stderr (method, URL, status, duration) |
+| `--quiet` | `SUCCULENT_QUIET` | `false` | Log errors only. Cannot be combined with `--verbose` |
 
 ## list
 
