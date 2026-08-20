@@ -38,6 +38,8 @@ Viper reads `SUCCULENT_` plus the uppercase config key. These are the variables 
 
 `--output` and `--timeout` are flags only; they have no environment variables. `--verbose` and `--quiet` are flags/env only; they are not stored by `config set`. They cannot be set together.
 
+`--no-color` disables ANSI color in `list` and `status` table output. The `NO_COLOR` environment variable (any non-empty value) does the same; it is not a `SUCCULENT_*` variable.
+
 `config set` / `config show` / `config init` cover `url`, `env`, `verify_ssl`, `strict_ssh`, `remote_user`, `remote_path`, `default_email`, and `default_owner`. Prefer `SUCCULENT_REMOTE_PASSWORD` or `--password` over storing a password in the config file.
 
 ## Example Config

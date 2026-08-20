@@ -246,6 +246,17 @@ func TestQuietFlagExists(t *testing.T) {
 	}
 }
 
+func TestNoColorFlagExists(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("no-color")
+	if flag == nil {
+		t.Fatal("Expected --no-color flag on rootCmd, not found")
+	}
+
+	if flag.DefValue != "false" {
+		t.Errorf("Expected --no-color default 'false', got %q", flag.DefValue)
+	}
+}
+
 func TestFlagParsing_VerboseQuietConflict(t *testing.T) {
 	t.Cleanup(func() {
 		rootCmd.SetArgs(nil)
