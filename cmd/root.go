@@ -184,6 +184,8 @@ func init() {
 		"Enable debug logging to stderr")
 	rootCmd.PersistentFlags().Bool("quiet", false,
 		"Log errors only")
+	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false,
+		"Disable ANSI color in table output (also honors NO_COLOR)")
 
 	_ = viper.BindPFlag("url", rootCmd.PersistentFlags().Lookup("url"))
 	_ = viper.BindPFlag("env", rootCmd.PersistentFlags().Lookup("env"))

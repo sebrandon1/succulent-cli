@@ -14,6 +14,7 @@
 | `--timeout` | — | `60` | HTTP request timeout in seconds |
 | `--verbose`, `-v` | `SUCCULENT_VERBOSE` | `false` | Debug logging to stderr (method, URL, status, duration) |
 | `--quiet` | `SUCCULENT_QUIET` | `false` | Log errors only. Cannot be combined with `--verbose` |
+| `--no-color` | `NO_COLOR` | `false` | Disable ANSI color in table output. Color is also off when stdout is not a TTY. |
 
 ## list
 
@@ -31,6 +32,8 @@ succulent-cli list --no-detail
 | `--sort` | `name` | `name`, `status`, `group`, or `nodes-up` |
 | `--filter` | — | `key=value` (`name`, `status`, `group`, `owner`). Status is `active`, `partial`, or `empty`. |
 
+On a TTY, `list` colors status `active` (green), `partial` (yellow), and `empty` (gray). JSON output is never colored.
+
 ## status
 
 ```bash
@@ -38,6 +41,8 @@ succulent-cli status --env myenv
 ```
 
 No command-specific flags. Uses `--output json` for JSON.
+
+On a TTY, overall status and node status values are colored (Ready/up green, Partial yellow, Down/down red).
 
 ## get info
 

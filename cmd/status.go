@@ -113,7 +113,7 @@ func printNodeSummary(total, nodesUp int) {
 		statusIcon = iconStatusPartial
 	}
 
-	fmt.Printf("Overall Status: %s %s\n", statusIcon, status)
+	fmt.Printf("Overall Status: %s %s\n", statusIcon, colorStatus(status))
 	fmt.Println()
 }
 
@@ -143,7 +143,7 @@ func printNodeDetails(nodesByType map[string][]lib.NodeInfo) {
 				ip = "-"
 			}
 
-			fmt.Printf("    %s %s - %s [%s]\n", statusIcon, node.Name, ip, node.Status)
+			fmt.Printf("    %s %s - %s [%s]\n", statusIcon, node.Name, ip, colorStatus(node.Status))
 		}
 
 		fmt.Println()

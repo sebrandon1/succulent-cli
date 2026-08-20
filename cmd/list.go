@@ -116,7 +116,7 @@ func listDetailed(ctx context.Context) error {
 
 		nodes := fmt.Sprintf("%d/%d", d.NodesUp, d.NodeCount)
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", d.Name, group, d.Status, nodes, owner, ip)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", d.Name, group, colorStatus(d.Status), nodes, owner, ip)
 	}
 
 	return w.Flush()
