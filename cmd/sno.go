@@ -29,7 +29,9 @@ Version flags (use one approach):
   --full-ocp-tag                Exact build tag (e.g., 4.17.0-0.nightly-2026-05-20-123456)
   --full-image                  Full container image reference
 
-If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignored.`,
+If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignored.
+
+When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instead of failing immediately.`,
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17 --confirm
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -37,7 +39,16 @@ If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignor
 			return fmt.Errorf("--confirm is required to provision an SNO cluster (use --dry-run to preview)")
 		}
 
-		if err := validateOCPTag(snoOCPTag, "--ocp-tag"); err != nil {
+		ocpTag := snoOCPTag
+		if ocpTag == "" && snoFullTag == "" && snoFullImage == "" {
+			var err error
+			ocpTag, err = promptOptional(ocpTag)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := validateOCPTag(ocpTag, "--ocp-tag"); err != nil {
 			return err
 		}
 
@@ -53,7 +64,7 @@ If --full-ocp-tag or --full-image is set, --ocp-tag and --release-type are ignor
 		req := lib.SNOProvisionRequest{
 			Owner:         owner,
 			Email:         email,
-			OCPTag:        snoOCPTag,
+			OCPTag:        ocpTag,
 			ReleaseType:   snoRelease,
 			FullOCPTag:    snoFullTag,
 			FullImageName: snoFullImage,

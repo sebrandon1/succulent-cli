@@ -40,7 +40,9 @@ Version flags for management and hosted clusters (use one approach per cluster):
   --hcp-tag + --hcp-release     Short tag with release type for the hosted cluster
   --hcp-full-tag                Exact build tag for the hosted cluster
 
-Full tags override their corresponding short tag + release type flags.`,
+Full tags override their corresponding short tag + release type flags.
+
+When stdin is a TTY, missing --owner and --email are prompted instead of failing immediately.`,
 	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17 --confirm
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {

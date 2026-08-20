@@ -44,7 +44,9 @@ Version flags for hub and spoke (use one approach per cluster):
   --spoke-tag + --spoke-release   Short tag with release type for spoke clusters
   --spoke-full-tag                Exact build tag for spoke clusters
 
-Full tags override their corresponding short tag + release type flags.`,
+Full tags override their corresponding short tag + release type flags.
+
+When stdin is a TTY, missing --owner and --email are prompted instead of failing immediately.`,
 	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
