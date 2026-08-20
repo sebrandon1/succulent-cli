@@ -1,6 +1,6 @@
 # Command Reference
 
-`--env` is required except on `list`, `health`, `version`, `config`, and `completion`. `--owner` and `--email` fall back to `default_owner` / `default_email` in config. All `SUCCULENT_*` environment variables are listed in [Configuration](configuration.md).
+`--env` is required except on `list`, `health`, `version`, `config`, and `completion`. `--owner` and `--email` fall back to `default_owner` / `default_email` in config. On an interactive TTY, missing `--owner`, `--email`, and `--ocp-tag` (where that flag applies) are prompted instead of a hard error. All `SUCCULENT_*` environment variables are listed in [Configuration](configuration.md).
 
 ## Global Flags
 
@@ -90,7 +90,7 @@ succulent-cli reprovision --env myenv --email user@example.com --owner myuser --
 |------|---------|-------------|
 | `--email` | — | Notification email |
 | `--owner` | — | Username |
-| `--ocp-tag` | — | OCP version tag, e.g. `4.17` (required) |
+| `--ocp-tag` | — | OCP version tag, e.g. `4.17` (required; prompted on a TTY if omitted) |
 | `--release-type` | `nightly` | `nightly` or `ci` |
 | `--openshift-image` | — | Full OpenShift image URL |
 | `--disk-size` | `50` | Disk size in GB |
@@ -111,7 +111,7 @@ succulent-cli sno provision --env myenv --owner myuser --email user@example.com 
 |------|---------|-------------|
 | `--owner` | — | Username |
 | `--email` | — | Notification email |
-| `--ocp-tag` | — | OCP tag (e.g. `4.17`) |
+| `--ocp-tag` | — | OCP tag (e.g. `4.17`); prompted on a TTY if no version flag is set |
 | `--release-type` | `nightly` | `nightly` or `ci` |
 | `--full-ocp-tag` | — | Full OCP tag; overrides `--ocp-tag` and `--release-type` |
 | `--full-image` | — | Full image reference; overrides tag flags |

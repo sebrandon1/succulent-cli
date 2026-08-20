@@ -33,7 +33,9 @@ var reprovisionCmd = &cobra.Command{
 	Short: "Reprovision an MNO cluster",
 	Long: `Submit a reprovisioning request to the succulent service for the specified environment.
 
-Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.`,
+Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
+
+When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instead of failing immediately.`,
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.17 --confirm
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.18 --release-type ci --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
@@ -42,14 +44,16 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 		}
 
 		// Prefer new flags, fall back to deprecated if new flags not set
-		if reprovTag == "" && reprovTagDeprecated != "" {
-			reprovTag = reprovTagDeprecated
+		tag := reprovTag
+		if tag == "" && reprovTagDeprecated != "" {
+			tag = reprovTagDeprecated
 		}
 		if reprovVersion == "nightly" && reprovVersionDeprecated != "nightly" {
 			reprovVersion = reprovVersionDeprecated
 		}
 
-		if err := validateOCPTag(reprovTag, "--ocp-tag"); err != nil {
+		tag, err := resolveOCPTag(tag)
+		if err != nil {
 			return err
 		}
 
@@ -65,7 +69,7 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 		req := lib.ReprovisionRequest{
 			Email:             email,
 			Owner:             owner,
-			Tag:               reprovTag,
+			Tag:               tag,
 			Version:           reprovVersion,
 			OpenshiftImage:    reprovOpenshiftImage,
 			DiskSize:          reprovDiskSize,
@@ -89,7 +93,7 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 		return printResult(CommandResult{
 			Status:      "submitted",
 			Environment: envName,
-			Message:     fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", envName, reprovTag, reprovVersion),
+			Message:     fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", envName, tag, reprovVersion),
 		}, outputFormat)
 	},
 }
@@ -97,7 +101,7 @@ Use --ocp-tag with --release-type (default: nightly) to specify the OCP version.
 func init() {
 	reprovisionCmd.Flags().StringVar(&reprovEmail, "email", "", "Email address for notifications")
 	reprovisionCmd.Flags().StringVar(&reprovOwner, "owner", "", "Username (owner)")
-	reprovisionCmd.Flags().StringVar(&reprovTag, "ocp-tag", "", "OCP version tag (e.g., 4.17, 5.0); required")
+	reprovisionCmd.Flags().StringVar(&reprovTag, "ocp-tag", "", "OCP version tag (e.g., 4.17, 5.0); required unless prompted")
 	reprovisionCmd.Flags().StringVar(&reprovTagDeprecated, "tag", "", "OCP version tag (deprecated: use --ocp-tag)")
 	reprovisionCmd.Flags().StringVar(&reprovVersion, "release-type", "nightly", "Release type: nightly (default) or ci; used with --ocp-tag")
 	reprovisionCmd.Flags().StringVar(&reprovVersionDeprecated, "version", "nightly", "Release type (deprecated: use --release-type)")
@@ -113,8 +117,6 @@ func init() {
 
 	reprovisionCmd.Flags().BoolVar(&confirmReprovision, "confirm", false, "Confirm reprovisioning (required)")
 	reprovisionCmd.Flags().BoolVar(&dryRunReprovision, "dry-run", false, "Show what would be sent without executing")
-
-	cobra.CheckErr(reprovisionCmd.MarkFlagRequired("ocp-tag"))
 
 	rootCmd.AddCommand(reprovisionCmd)
 }

@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -189,6 +190,24 @@ func TestReprovisionCommandNoConfirm(t *testing.T) {
 
 	if err := rootCmd.Execute(); err == nil {
 		t.Fatal("Expected error without --confirm, got nil")
+	}
+}
+
+func TestReprovisionCommandMissingOCPTag(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	reprovTag = ""
+	reprovTagDeprecated = ""
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--confirm"})
+
+	err := rootCmd.Execute()
+	if err == nil {
+		t.Fatal("Expected error without --ocp-tag, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "--ocp-tag is required") {
+		t.Errorf("Expected ocp-tag required error, got %v", err)
 	}
 }
 

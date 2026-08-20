@@ -44,6 +44,15 @@ func printResult(result CommandResult, format string) error {
 	return nil
 }
 
+const (
+	errOwnerRequired  = "--owner is required (or set default_owner in config); try: succulent-cli config init"
+	errEmailRequired  = "--email is required (or set default_email in config); try: succulent-cli config init"
+	errOCPTagRequired = "%s is required (e.g., 4.17)"
+	promptOwner       = "Owner: "
+	promptEmail       = "Email: "
+	promptOCPTag      = "OCP tag (e.g. 4.17): "
+)
+
 func resolveOwnerEmail(owner, email string) (string, string, error) {
 	if owner == "" {
 		owner = viper.GetString("default_owner")
@@ -53,12 +62,16 @@ func resolveOwnerEmail(owner, email string) (string, string, error) {
 		email = viper.GetString("default_email")
 	}
 
-	if owner == "" {
-		return "", "", fmt.Errorf("--owner is required (or set default_owner in config); try: succulent-cli config init")
+	var err error
+
+	owner, err = promptIfEmpty(owner, errOwnerRequired, promptOwner)
+	if err != nil {
+		return "", "", err
 	}
 
-	if email == "" {
-		return "", "", fmt.Errorf("--email is required (or set default_email in config); try: succulent-cli config init")
+	email, err = promptIfEmpty(email, errEmailRequired, promptEmail)
+	if err != nil {
+		return "", "", err
 	}
 
 	if !strings.Contains(email, "@") {
@@ -66,6 +79,21 @@ func resolveOwnerEmail(owner, email string) (string, string, error) {
 	}
 
 	return owner, email, nil
+}
+
+func resolveOCPTag(tag string) (string, error) {
+	var err error
+
+	tag, err = promptIfEmpty(tag, fmt.Sprintf(errOCPTagRequired, "--ocp-tag"), promptOCPTag)
+	if err != nil {
+		return "", err
+	}
+
+	if err := validateOCPTag(tag, "--ocp-tag"); err != nil {
+		return "", err
+	}
+
+	return tag, nil
 }
 
 func validateNumericFlag(value, flagName string) error {
