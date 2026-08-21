@@ -1,11 +1,16 @@
 package lib
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -257,4 +262,160 @@ func TestListEnvironmentsBodyTooLarge(t *testing.T) {
 
 	_, err := client.ListEnvironments(context.Background())
 	assertTruncated(t, err)
+}
+
+func envListHTML(names ...string) string {
+	var b strings.Builder
+	b.WriteString(`<html><body><table>`)
+	b.WriteString(`<tr style="background-color: #e0f7fa;"><th colspan="3">Hosts TEST</th></tr>`)
+
+	for _, name := range names {
+		fmt.Fprintf(&b, `<tr><th>%s</th><th><button onclick="location.href='/infoplan/%s'">Info</button></th></tr>`, name, name)
+	}
+
+	b.WriteString(`</table></body></html>`)
+
+	return b.String()
+}
+
+func numberedEnvNames(n int) []string {
+	names := make([]string, n)
+	for i := range names {
+		names[i] = fmt.Sprintf("env%d", i+1)
+	}
+
+	return names
+}
+
+func TestListEnvironmentsWithInfoConcurrentProgress(t *testing.T) {
+	names := numberedEnvNames(12)
+	infoHTML := `<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>plan</td><td>client</td><td>2026-05-27 12:00 owner</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>installer</td><td>up</td><td>192.168.1.100</td></tr>
+</table></body></html>`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.Write([]byte(envListHTML(names...)))
+
+			return
+		}
+
+		w.Write([]byte(infoHTML))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	var buf bytes.Buffer
+	details, err := client.ListEnvironmentsWithInfo(context.Background(), 10, nil, &buf)
+	if err != nil {
+		t.Fatalf("ListEnvironmentsWithInfo failed: %v", err)
+	}
+
+	if len(details) != 12 {
+		t.Fatalf("Expected 12 environments, got %d", len(details))
+	}
+}
+
+func TestListEnvironmentsWithInfoCancelsLeftoverFetches(t *testing.T) {
+	names := numberedEnvNames(8)
+	var infoplanHits atomic.Int32
+	started := make(chan struct{}, 2)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.Write([]byte(envListHTML(names...)))
+
+			return
+		}
+
+		infoplanHits.Add(1)
+		select {
+		case started <- struct{}{}:
+		default:
+		}
+
+		time.Sleep(300 * time.Millisecond)
+		w.Write([]byte("<html><body><table></table></body></html>"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+
+	go func() {
+		_, err := client.ListEnvironmentsWithInfo(ctx, 2, nil, io.Discard)
+		errCh <- err
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for i := 0; i < 2; i++ {
+		select {
+		case <-started:
+		case <-time.After(time.Until(deadline)):
+			t.Fatal("timed out waiting for infoplan workers to start")
+		}
+	}
+
+	cancel()
+
+	select {
+	case err := <-errCh:
+		if err != nil {
+			t.Fatalf("ListEnvironmentsWithInfo returned error: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("ListEnvironmentsWithInfo did not return after cancel")
+	}
+
+	if hits := infoplanHits.Load(); hits >= int32(len(names)) {
+		t.Fatalf("expected leftover GetInfoPlan calls to skip, got %d hits", hits)
+	}
+}
+
+type panicWriter struct{}
+
+func (panicWriter) Write(p []byte) (int, error) {
+	if string(p) == "\n" {
+		return 1, nil
+	}
+
+	panic("boom")
+}
+
+func TestListEnvironmentsWithInfoRecoversWriterPanic(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.Write([]byte(envListHTML("env1")))
+
+			return
+		}
+
+		w.Write([]byte("<html><body><table></table></body></html>"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	done := make(chan error, 1)
+
+	go func() {
+		_, err := client.ListEnvironmentsWithInfo(context.Background(), 1, nil, panicWriter{})
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("ListEnvironmentsWithInfo returned error after panic: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("ListEnvironmentsWithInfo hung after worker panic")
+	}
 }
