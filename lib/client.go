@@ -167,27 +167,33 @@ func (c *Client) endpointURL(pathFmt string, args ...any) string {
 	return joined
 }
 
+func (c *Client) doRequest(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+	}
+
+	req, err := newReq()
+	if err != nil {
+		return nil, err
+	}
+
+	return c.HTTPClient.Do(req)
+}
+
 func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {
 	var lastErr error
 
 	for attempt := range c.MaxRetries {
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-
-		req, err := newReq()
-		if err != nil {
-			return nil, err
-		}
-
-		resp, err := c.HTTPClient.Do(req)
+		resp, err := c.doRequest(ctx, newReq)
 		if err != nil {
 			lastErr = err
 
 			if attempt < c.MaxRetries-1 {
-				c.sleepWithJitter(attempt)
+				if sleepErr := c.sleepWithJitter(ctx, attempt); sleepErr != nil {
+					return nil, sleepErr
+				}
 			}
 
 			continue
@@ -198,7 +204,9 @@ func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, 
 			lastErr = fmt.Errorf("server error: status code %d (%s)", resp.StatusCode, errHintServerLogs)
 
 			if attempt < c.MaxRetries-1 {
-				c.sleepWithJitter(attempt)
+				if sleepErr := c.sleepWithJitter(ctx, attempt); sleepErr != nil {
+					return nil, sleepErr
+				}
 			}
 
 			continue
@@ -210,10 +218,18 @@ func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, 
 	return nil, lastErr
 }
 
-func (c *Client) sleepWithJitter(attempt int) {
+func (c *Client) sleepWithJitter(ctx context.Context, attempt int) error {
 	delay := c.RetryBaseDelay * (1 << attempt)
 	n, _ := rand.Int(rand.Reader, big.NewInt(int64(delay/2)))
-	time.Sleep(delay + time.Duration(n.Int64()))
+	timer := time.NewTimer(delay + time.Duration(n.Int64()))
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
 }
 
 func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response, error) {
@@ -245,7 +261,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 	start := time.Now()
 	encoded := data.Encode()
 
-	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
+	resp, err := c.doRequest(ctx, func() (*http.Request, error) {
 		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(encoded))
 		if err != nil {
 			return nil, err
@@ -282,7 +298,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	start := time.Now()
 	encoded := data.Encode()
 
-	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
+	resp, err := c.doRequest(ctx, func() (*http.Request, error) {
 		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(encoded))
 		if err != nil {
 			return nil, err

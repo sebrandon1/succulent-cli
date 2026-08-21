@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -228,6 +229,130 @@ func TestRetryExhausted(t *testing.T) {
 
 	if got := attempts.Load(); got != 3 {
 		t.Errorf("Expected 3 attempts, got %d", got)
+	}
+}
+
+func TestPostFormNoRetryOn500(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	client.MaxRetries = 3
+
+	err := client.postForm(context.Background(), server.URL+"/test", nil)
+	if err == nil {
+		t.Fatal("Expected error for 500 response, got nil")
+	}
+
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("Expected 1 attempt (no retry on POST), got %d", got)
+	}
+}
+
+func TestPostFormRawNoRetryOn500(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	client.MaxRetries = 3
+
+	_, err := client.postFormRaw(context.Background(), server.URL+"/test", nil)
+	if err == nil {
+		t.Fatal("Expected error for 500 response, got nil")
+	}
+
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("Expected 1 attempt (no retry on POST), got %d", got)
+	}
+}
+
+func TestPostFormNoRetryOnTransportError(t *testing.T) {
+	var attempts atomic.Int32
+	transport := roundTripFunc(func(*http.Request) (*http.Response, error) {
+		attempts.Add(1)
+
+		return nil, errors.New("connection refused")
+	})
+
+	client := newTestClient("http://example.test")
+	client.MaxRetries = 3
+	client.HTTPClient.Transport = transport
+
+	err := client.postForm(context.Background(), "http://example.test/test", nil)
+	if err == nil {
+		t.Fatal("Expected transport error, got nil")
+	}
+
+	if got := attempts.Load(); got != 1 {
+		t.Errorf("Expected 1 attempt (no retry on POST), got %d", got)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+func TestRetryBackoffHonorsCancel(t *testing.T) {
+	var attempts atomic.Int32
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("error"))
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	client.RetryBaseDelay = 500 * time.Millisecond
+	client.MaxRetries = 3
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	errCh := make(chan error, 1)
+
+	go func() {
+		_, err := client.getRaw(ctx, server.URL+"/test")
+		errCh <- err
+	}()
+
+	deadline := time.Now().Add(2 * time.Second)
+	for attempts.Load() < 1 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if attempts.Load() < 1 {
+		t.Fatal("first request never completed")
+	}
+
+	cancel()
+	started := time.Now()
+
+	select {
+	case err := <-errCh:
+		if !errors.Is(err, context.Canceled) {
+			t.Fatalf("Expected context.Canceled, got %v", err)
+		}
+
+		if elapsed := time.Since(started); elapsed > 200*time.Millisecond {
+			t.Fatalf("cancel waited %v; backoff should abort immediately", elapsed)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("getRaw did not return after cancel")
 	}
 }
 
