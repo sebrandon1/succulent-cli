@@ -37,6 +37,7 @@ func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, 
 	fetchedInfos := make([]*ClusterInfo, total)
 
 	var wg sync.WaitGroup
+	var progressMu sync.Mutex
 
 	for i, env := range envs {
 		details[i] = EnvironmentDetail{
@@ -59,26 +60,7 @@ func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, 
 
 		go func(idx int, envName string) {
 			defer wg.Done()
-
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			info, infoErr := c.GetInfoPlan(ctx, envName)
-
-			done := int(completed.Add(1))
-			fmt.Fprintf(w, "\r  Fetching environment info... %d/%d", done, total)
-
-			if infoErr != nil {
-				return
-			}
-
-			fetchedInfos[idx] = info
-
-			if len(info.Nodes) == 0 {
-				return
-			}
-
-			fillDetail(&details[idx], info)
+			c.fetchListInfo(ctx, idx, envName, total, details, fetchedInfos, &completed, sem, &progressMu, w)
 		}(i, env.Name)
 	}
 
@@ -103,6 +85,49 @@ func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, 
 	}
 
 	return details, nil
+}
+
+func (c *Client) fetchListInfo(ctx context.Context, idx int, envName string, total int, details []EnvironmentDetail, fetchedInfos []*ClusterInfo, completed *atomic.Int32, sem chan struct{}, progressMu *sync.Mutex, w io.Writer) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			c.logger().Error("list worker panicked", "env", envName, "panic", rec)
+		}
+	}()
+
+	select {
+	case <-ctx.Done():
+		return
+	case sem <- struct{}{}:
+	}
+	defer func() { <-sem }()
+
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
+	info, infoErr := c.GetInfoPlan(ctx, envName)
+
+	writeListProgress(progressMu, w, int(completed.Add(1)), total)
+
+	if infoErr != nil {
+		return
+	}
+
+	fetchedInfos[idx] = info
+
+	if len(info.Nodes) == 0 {
+		return
+	}
+
+	fillDetail(&details[idx], info)
+}
+
+func writeListProgress(mu *sync.Mutex, w io.Writer, done, total int) {
+	mu.Lock()
+	defer mu.Unlock()
+	fmt.Fprintf(w, "\r  Fetching environment info... %d/%d", done, total)
 }
 
 func fillDetail(d *EnvironmentDetail, info *ClusterInfo) {
