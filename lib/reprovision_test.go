@@ -141,6 +141,10 @@ func TestReprovisionAllOptionalFields(t *testing.T) {
 			t.Errorf("Expected parameter_openshift_image, got %s", r.FormValue("parameter_openshift_image"))
 		}
 
+		if r.FormValue("parameter_end_date") != "2026-12-31" {
+			t.Errorf("Expected parameter_end_date, got %s", r.FormValue("parameter_end_date"))
+		}
+
 		if r.FormValue("additional_params") != "disconnected:False" {
 			t.Errorf("Expected additional_params, got %s", r.FormValue("additional_params"))
 		}
@@ -160,6 +164,7 @@ func TestReprovisionAllOptionalFields(t *testing.T) {
 		DiskSize:          "100",
 		VirtualWorkers:    "true",
 		AdditionalWorkers: "worker1,worker2",
+		EndDate:           "2026-12-31",
 		KcliParams:        "disconnected:False",
 	}
 

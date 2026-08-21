@@ -135,6 +135,7 @@ func (r *ReprovisionRequest) FormValues() url.Values {
 	}
 
 	setIfNotEmpty(data, "parameter_openshift_image", r.OpenshiftImage)
+	setIfNotEmpty(data, "parameter_end_date", r.EndDate)
 	setIfNotEmpty(data, "additional_params", r.KcliParams)
 
 	return data
