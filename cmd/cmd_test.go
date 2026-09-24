@@ -105,6 +105,19 @@ func TestClientRequestsIncludeCLIVersionInUserAgent(t *testing.T) {
 	}
 }
 
+func TestLogCommandFollow(t *testing.T) {
+	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("PLAY RECAP ***\n"))
+	})
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"get", "log", "--env", "testenv", "--follow"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
 func TestDeleteCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()
