@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -208,6 +209,29 @@ func TestGetInfoPlanSingleCellRow(t *testing.T) {
 
 	if len(info.Nodes) != 1 {
 		t.Errorf("Expected 1 node (single-cell row skipped), got %d", len(info.Nodes))
+	}
+}
+
+func TestParseInfoPlanStopsAfterLastVMRow(t *testing.T) {
+	html := `<table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>testenv1</td><td>client1</td><td>2026-05-27</td></tr>
+<tr><th>Vm name</th><th>Status</th><th>Ip</th></tr>
+<tr><td>testenv1-master-0</td><td>up</td><td>192.168.1.101</td></tr>
+<tr><td>Summary</td><td>Complete</td></tr>
+</table>
+<table><tr><td>unrelated-worker-0</td><td>up</td><td>192.168.1.102</td></tr></table>`
+
+	info, err := parseInfoPlan(testEnv, strings.NewReader(html))
+	if err != nil {
+		t.Fatalf("parseInfoPlan failed: %v", err)
+	}
+
+	if len(info.Nodes) != 1 {
+		t.Fatalf("Expected parsing to stop after the VM rows, got %d nodes", len(info.Nodes))
+	}
+	if info.Nodes[0].Name != "testenv1-master-0" {
+		t.Errorf("Expected node testenv1-master-0, got %s", info.Nodes[0].Name)
 	}
 }
 

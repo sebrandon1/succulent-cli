@@ -42,14 +42,12 @@ func parseInfoPlan(env string, r io.Reader) (*ClusterInfo, error) {
 		Nodes:       []NodeInfo{},
 	}
 
-	var rows [][]string
-	extractTableRows(doc, &rows)
-
 	headerParsed := false
+	vmRowsStarted := false
 
-	for _, cells := range rows {
+	extractTableRows(doc, func(cells []string) bool {
 		if len(cells) < 2 {
-			continue
+			return !vmRowsStarted
 		}
 
 		col0 := strings.TrimSpace(cells[0])
@@ -58,7 +56,7 @@ func parseInfoPlan(env string, r io.Reader) (*ClusterInfo, error) {
 		if !headerParsed && strings.EqualFold(col0, "plan name") {
 			headerParsed = true
 
-			continue
+			return true
 		}
 
 		if headerParsed && info.PlanName == "" && !strings.EqualFold(col0, "vm name") {
@@ -69,24 +67,27 @@ func parseInfoPlan(env string, r io.Reader) (*ClusterInfo, error) {
 				info.CreationDate = strings.TrimSpace(cells[2])
 			}
 
-			continue
+			return true
 		}
 
 		if strings.EqualFold(col0, "vm name") {
-			continue
+			return true
 		}
 
 		node := parseNodeRow(col0, col1, cells)
 		if node == nil {
-			continue
+			return !vmRowsStarted
 		}
 
+		vmRowsStarted = true
 		info.Nodes = append(info.Nodes, *node)
 
 		if strings.Contains(strings.ToLower(col0), "installer") && node.IP != "" {
 			info.InstallerIP = node.IP
 		}
-	}
+
+		return true
+	})
 
 	return info, nil
 }
@@ -127,7 +128,7 @@ func classifyNodeType(name string) string {
 	}
 }
 
-func extractTableRows(n *html.Node, rows *[][]string) {
+func extractTableRows(n *html.Node, visit func([]string) bool) bool {
 	if n.Type == html.ElementNode && n.Data == "tr" {
 		var cells []string
 
@@ -138,15 +139,19 @@ func extractTableRows(n *html.Node, rows *[][]string) {
 		}
 
 		if len(cells) > 0 {
-			*rows = append(*rows, cells)
+			return visit(cells)
 		}
 
-		return
+		return true
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		extractTableRows(c, rows)
+		if !extractTableRows(c, visit) {
+			return false
+		}
 	}
+
+	return true
 }
 
 func extractText(n *html.Node) string {
