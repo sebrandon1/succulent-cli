@@ -53,6 +53,9 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 		if !confirmZTP {
 			return fmt.Errorf("--confirm is required to provision a ZTP cluster (use --dry-run to preview)")
 		}
+		if err := validateProvisionWatchFlags(dryRunZTP); err != nil {
+			return err
+		}
 
 		for _, v := range []struct{ tag, flag string }{
 			{ztpSNOTag, "--sno-tag"}, {ztpSNOFullTag, "--sno-full-tag"},
@@ -106,9 +109,10 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			}); err != nil {
 				return "", fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
 			}
-			return fmt.Sprintf("ZTP provision request submitted for %s (type: %s)", target, ztpType), nil
+			message := fmt.Sprintf("ZTP provision request submitted for %s (type: %s)", target, ztpType)
+			return waitForProvisioning(cmd, target, "ZTP provision", message)
 		}, func(target, message string) error {
-			return printResult(CommandResult{Status: "submitted", Environment: target, Message: message}, outputFormat)
+			return printResult(CommandResult{Status: provisionResultStatus(), Environment: target, Message: message}, outputFormat)
 		}, dryRunZTP)
 	},
 }
@@ -167,6 +171,7 @@ func init() {
 	ztpProvisionCmd.Flags().StringVar(&ztpVMWorkers, "vm-workers", "1", "Number of VM workers")
 	ztpProvisionCmd.Flags().BoolVar(&confirmZTP, "confirm", false, "Confirm provisioning (required)")
 	ztpProvisionCmd.Flags().BoolVar(&dryRunZTP, "dry-run", false, "Show what would be sent without executing")
+	addProvisionWatchFlags(ztpProvisionCmd)
 
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCChoice, "choice", "", "Kubeconfig type: management or spoke")
 	ztpKubeconfigCmd.Flags().StringVar(&ztpKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/ztp-{choice}-kubeconfig)")

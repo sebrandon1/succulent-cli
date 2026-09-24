@@ -95,6 +95,22 @@ succulent-cli watch --env myenv --control-plane-only
 | `--poll-interval` | `30` | Seconds between status checks |
 | `--control-plane-only` | `false` | Ready when installer and masters are up |
 
+## Provisioning Watch
+
+Add `--watch` to `reprovision`, `sno provision`, `ztp provision`, or
+`hypershift provision` to monitor cluster readiness after the service accepts
+the request:
+
+```bash
+succulent-cli sno provision --env myenv --owner user --email user@example.com --ocp-tag 4.17 --confirm --watch
+succulent-cli reprovision --env myenv --owner user --email user@example.com --ocp-tag 4.17 --confirm --watch --max-wait 90 --poll-interval 15
+```
+
+The command reports the installer IP when the cluster is ready. `--max-wait`
+defaults to 60 minutes, `--poll-interval` defaults to 30 seconds (minimum 5),
+and `--control-plane-only` considers the cluster ready when the installer and
+masters are up. `--watch` cannot be combined with `--dry-run`.
+
 ## health
 
 ```bash
