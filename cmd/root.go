@@ -17,6 +17,7 @@ import (
 var validEnvName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
 
 var (
+	cliVersion       = "dev"
 	succulentURL     string
 	envName          string
 	verifySSL        bool
@@ -56,6 +57,7 @@ kubeconfig retrieval, and environment deletion.`,
 		if err != nil {
 			return err
 		}
+		sharedClient.SetUserAgentVersion(cliVersion)
 
 		sharedClient.Logger = slog.Default()
 
@@ -81,6 +83,7 @@ kubeconfig retrieval, and environment deletion.`,
 
 func SetVersion(v string) {
 	rootCmd.Version = v
+	cliVersion = v
 }
 
 var getCmd = &cobra.Command{
