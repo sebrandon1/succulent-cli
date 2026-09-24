@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -33,40 +34,14 @@ func (c *Client) FollowLog(ctx context.Context, env string, w io.Writer, pollInt
 	var previousTail []byte
 
 	for {
-		resp, err := c.getRaw(ctx, c.endpointURL(endpointLog, env))
+		nextOffset, nextTail, finished, err := c.streamLogSnapshot(ctx, env, offset, previousTail, w)
 		if err != nil {
-			return fmt.Errorf("failed to fetch log for %s: %w", env, err)
+			return err
 		}
+		offset = nextOffset
+		previousTail = nextTail
 
-		if offset > 0 {
-			skipped, err := io.CopyN(io.Discard, resp.Body, offset)
-			if err != nil {
-				resp.Body.Close()
-				if err == io.EOF || err == io.ErrUnexpectedEOF {
-					return fmt.Errorf("log output for %s shrank while following", env)
-				}
-				return fmt.Errorf("failed to skip existing log output for %s: %w", env, err)
-			}
-			if skipped != offset {
-				resp.Body.Close()
-				return fmt.Errorf("log output for %s shrank while following", env)
-			}
-		}
-
-		stream := &logFollowWriter{dst: w, tail: previousTail}
-		written, copyErr := io.Copy(stream, resp.Body)
-		closeErr := resp.Body.Close()
-		if copyErr != nil {
-			return fmt.Errorf("error streaming log: %w", copyErr)
-		}
-		if closeErr != nil {
-			return fmt.Errorf("closing log response: %w", closeErr)
-		}
-
-		offset += written
-		previousTail = stream.tail
-
-		if stream.finished {
+		if finished {
 			return nil
 		}
 
@@ -78,6 +53,39 @@ func (c *Client) FollowLog(ctx context.Context, env string, w io.Writer, pollInt
 		case <-timer.C:
 		}
 	}
+}
+
+func (c *Client) streamLogSnapshot(ctx context.Context, env string, offset int64, previousTail []byte, w io.Writer) (nextOffset int64, nextTail []byte, finished bool, retErr error) {
+	resp, err := c.getRaw(ctx, c.endpointURL(endpointLog, env))
+	if err != nil {
+		return offset, previousTail, false, fmt.Errorf("failed to fetch log for %s: %w", env, err)
+	}
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			retErr = errors.Join(retErr, fmt.Errorf("closing log response: %w", err))
+		}
+	}()
+
+	if offset > 0 {
+		skipped, err := io.CopyN(io.Discard, resp.Body, offset)
+		if err != nil {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				return offset, previousTail, false, fmt.Errorf("log output for %s shrank while following", env)
+			}
+			return offset, previousTail, false, fmt.Errorf("failed to skip existing log output for %s: %w", env, err)
+		}
+		if skipped != offset {
+			return offset, previousTail, false, fmt.Errorf("log output for %s shrank while following", env)
+		}
+	}
+
+	stream := &logFollowWriter{dst: w, tail: previousTail}
+	written, err := io.Copy(stream, resp.Body)
+	if err != nil {
+		return offset, previousTail, false, fmt.Errorf("error streaming log: %w", err)
+	}
+
+	return offset + written, stream.tail, stream.finished, nil
 }
 
 type logFollowWriter struct {
