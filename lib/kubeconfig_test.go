@@ -257,7 +257,7 @@ func TestBuildSCPCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			cmd := buildSCPCommand(tt.ip, tt.user, tt.password, tt.remotePath, tt.destPath, tt.strictSSH)
+			cmd := buildSCPCommand(context.Background(), tt.ip, tt.user, tt.password, tt.remotePath, tt.destPath, tt.strictSSH)
 
 			if cmd.Args[0] != tt.wantBinary {
 				t.Errorf("Expected binary %q, got %q", tt.wantBinary, cmd.Args[0])

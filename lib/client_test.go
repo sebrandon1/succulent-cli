@@ -81,6 +81,7 @@ func TestGetRawErrorStatus(t *testing.T) {
 	}
 
 	if resp != nil {
+		defer resp.Body.Close()
 		t.Fatal("Expected nil response on error")
 	}
 }
@@ -153,7 +154,11 @@ func TestGetRawInvalidURL(t *testing.T) {
 	client := newTestClient("http://invalid.localhost.test:1")
 	client.MaxRetries = 1
 
-	_, err := client.getRaw(context.Background(), "http://invalid.localhost.test:1/test")
+	resp, err := client.getRaw(context.Background(), "http://invalid.localhost.test:1/test")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err == nil {
 		t.Fatal("Expected error for invalid URL, got nil")
 	}
@@ -200,7 +205,11 @@ func TestNoRetryOn400(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.getRaw(context.Background(), server.URL+"/test")
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err == nil {
 		t.Fatal("Expected error for 400 response, got nil")
 	}
@@ -222,7 +231,11 @@ func TestRetryExhausted(t *testing.T) {
 
 	client := newTestClient(server.URL)
 
-	_, err := client.getRaw(context.Background(), server.URL+"/test")
+	resp, err := client.getRaw(context.Background(), server.URL+"/test")
+	if resp != nil {
+		defer resp.Body.Close()
+	}
+
 	if err == nil {
 		t.Fatal("Expected error after exhausted retries, got nil")
 	}
@@ -326,7 +339,11 @@ func TestRetryBackoffHonorsCancel(t *testing.T) {
 	errCh := make(chan error, 1)
 
 	go func() {
-		_, err := client.getRaw(ctx, server.URL+"/test")
+		resp, err := client.getRaw(ctx, server.URL+"/test")
+		if resp != nil {
+			_ = resp.Body.Close()
+		}
+
 		errCh <- err
 	}()
 

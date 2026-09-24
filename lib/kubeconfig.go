@@ -59,11 +59,16 @@ func validateIP(ip string) error {
 }
 
 func RemoveSSHHostKey(ip string) error {
+	return RemoveSSHHostKeyContext(context.Background(), ip)
+}
+
+// RemoveSSHHostKeyContext removes an IP's SSH host key until ctx is canceled.
+func RemoveSSHHostKeyContext(ctx context.Context, ip string) error {
 	if err := validateIP(ip); err != nil {
 		return err
 	}
 
-	cmd := exec.Command("ssh-keygen", "-R", ip) // #nosec G204 -- ip is validated by validateIP
+	cmd := exec.CommandContext(ctx, "ssh-keygen", "-R", ip) // #nosec G204 -- ip is validated by validateIP
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -75,6 +80,11 @@ func RemoveSSHHostKey(ip string) error {
 }
 
 func FetchKubeconfig(ip, user, password, remotePath, destPath string, strictSSH bool) error {
+	return FetchKubeconfigContext(context.Background(), ip, user, password, remotePath, destPath, strictSSH)
+}
+
+// FetchKubeconfigContext fetches a kubeconfig from an installer node until ctx is canceled.
+func FetchKubeconfigContext(ctx context.Context, ip, user, password, remotePath, destPath string, strictSSH bool) error {
 	if err := validateIP(ip); err != nil {
 		return err
 	}
@@ -84,7 +94,7 @@ func FetchKubeconfig(ip, user, password, remotePath, destPath string, strictSSH 
 		return fmt.Errorf("failed to create destination directory: %w", err)
 	}
 
-	cmd := buildSCPCommand(ip, user, password, remotePath, destPath, strictSSH)
+	cmd := buildSCPCommand(ctx, ip, user, password, remotePath, destPath, strictSSH)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
@@ -108,20 +118,20 @@ func FetchKubeconfig(ip, user, password, remotePath, destPath string, strictSSH 
 	return nil
 }
 
-func buildSCPCommand(ip, user, password, remotePath, destPath string, strictSSH bool) *exec.Cmd {
+func buildSCPCommand(ctx context.Context, ip, user, password, remotePath, destPath string, strictSSH bool) *exec.Cmd {
 	remote := fmt.Sprintf("%s@%s:%s", user, ip, remotePath)
 
 	scpArgs := append(sshHostKeyArgs(strictSSH), remote, destPath)
 
 	if password != "" {
 		args := append([]string{"-e", "scp"}, scpArgs...)
-		cmd := exec.Command("sshpass", args...) // #nosec G204 -- ip is validated; password is passed via SSHPASS
+		cmd := exec.CommandContext(ctx, "sshpass", args...) // #nosec G204 -- ip is validated; password is passed via SSHPASS
 		cmd.Env = append(os.Environ(), "SSHPASS="+password)
 
 		return cmd
 	}
 
-	return exec.Command("scp", scpArgs...) // #nosec G204 -- ip is validated by validateIP
+	return exec.CommandContext(ctx, "scp", scpArgs...) // #nosec G204 -- ip is validated by validateIP
 }
 
 func sshHostKeyArgs(strictSSH bool) []string {

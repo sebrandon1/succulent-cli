@@ -71,12 +71,12 @@ verify the host against ~/.ssh/known_hosts instead.`,
 
 		strict := viper.GetBool("strict_ssh")
 		if !strict {
-			if err := lib.RemoveSSHHostKey(installerIP); err != nil {
+			if err := lib.RemoveSSHHostKeyContext(cmd.Context(), installerIP); err != nil {
 				fmt.Printf("Warning: could not remove SSH host key: %v\n", err)
 			}
 		}
 
-		if err := lib.FetchKubeconfig(installerIP, user, password, path, dest, strict); err != nil {
+		if err := lib.FetchKubeconfigContext(cmd.Context(), installerIP, user, password, path, dest, strict); err != nil {
 			return fmt.Errorf("fetching kubeconfig: %w", err)
 		}
 
