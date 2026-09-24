@@ -17,24 +17,22 @@ var deleteCmd = &cobra.Command{
 	Long:    `Delete the specified environment from the succulent service. Requires --confirm flag for safety.`,
 	Example: `  succulent-cli delete --env myenv --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if dryRunDelete {
-			printDryRun("delete", envName, nil)
-			return nil
-		}
-
-		if !confirmDelete {
+		if !dryRunDelete && !confirmDelete {
 			return fmt.Errorf("--confirm is required to delete an environment (use --dry-run to preview)")
 		}
 
-		if err := sharedClient.DeleteEnvironment(cmd.Context(), envName); err != nil {
-			return fmt.Errorf("deleting environment: %w", err)
-		}
-
-		return printResult(CommandResult{
-			Status:      "deleted",
-			Environment: envName,
-			Message:     fmt.Sprintf("Environment %s deleted successfully", envName),
-		}, outputFormat)
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			if dryRunDelete {
+				printDryRun("delete", target, nil)
+				return fmt.Sprintf("[dry-run] Would delete %s", target), nil
+			}
+			if err := sharedClient.DeleteEnvironment(cmd.Context(), target); err != nil {
+				return "", fmt.Errorf("deleting environment: %w", err)
+			}
+			return fmt.Sprintf("Environment %s deleted successfully", target), nil
+		}, func(target, message string) error {
+			return printResult(CommandResult{Status: "deleted", Environment: target, Message: message}, outputFormat)
+		}, dryRunDelete)
 	},
 }
 

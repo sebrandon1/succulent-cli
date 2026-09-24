@@ -37,7 +37,7 @@ management service.
 
 Supports cluster info, provisioning (MNO and SNO), log streaming,
 kubeconfig retrieval, and environment deletion.`,
-	PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		if err := setupLogger(); err != nil {
 			return err
 		}
@@ -60,6 +60,19 @@ kubeconfig retrieval, and environment deletion.`,
 		sharedClient.Logger = slog.Default()
 
 		sharedCache = lib.NewCache(configDir(), 60*time.Second)
+		selectedEnvironments = nil
+
+		if supportsEnvironmentGroups(cmd) {
+			targets, err := resolveEnvironmentTargets(viper.GetString("env"), args)
+			if err != nil {
+				return err
+			}
+			selectedEnvironments = targets
+			if len(targets) > 0 {
+				envName = targets[0]
+				return nil
+			}
+		}
 
 		if skipEnvRequirement(cmd) {
 			return nil
