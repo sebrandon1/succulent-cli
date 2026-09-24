@@ -74,7 +74,7 @@ var selectedEnvironments []string
 
 func loadEnvironmentGroups() (map[string][]string, error) {
 	path := filepath.Join(configDir(), environmentGroupsFile)
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304 -- path is fixed under the CLI configuration directory
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return map[string][]string{}, nil
