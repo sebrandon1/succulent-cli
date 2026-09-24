@@ -49,6 +49,9 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 		if !confirmHS {
 			return fmt.Errorf("--confirm is required to provision a Hypershift cluster (use --dry-run to preview)")
 		}
+		if err := validateProvisionWatchFlags(dryRunHS); err != nil {
+			return err
+		}
 
 		for _, v := range []struct{ tag, flag string }{
 			{hsSNOTag, "--sno-tag"}, {hsSNOFullTag, "--sno-full-tag"},
@@ -89,9 +92,17 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			if err := sharedClient.ProvisionHypershift(cmd.Context(), target, &req); err != nil {
 				return "", fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
 			}
-			return fmt.Sprintf("Hypershift provision request submitted for %s", target), nil
+			message := fmt.Sprintf("Hypershift provision request submitted for %s", target)
+			installerIP, err := waitForProvisioning(cmd, target, "Hypershift provision")
+			if err != nil {
+				return "", err
+			}
+			if installerIP != "" {
+				message += fmt.Sprintf("; cluster ready (installer IP: %s)", installerIP)
+			}
+			return message, nil
 		}, func(target, message string) error {
-			return printResult(CommandResult{Status: "submitted", Environment: target, Message: message}, outputFormat)
+			return printResult(CommandResult{Status: provisionResultStatus(), Environment: target, Message: message}, outputFormat)
 		}, dryRunHS)
 	},
 }
@@ -140,6 +151,7 @@ func init() {
 	hsProvisionCmd.Flags().StringVar(&hsImageOverride, "image-override", "", "Hypershift operator image override")
 	hsProvisionCmd.Flags().BoolVar(&confirmHS, "confirm", false, "Confirm provisioning (required)")
 	hsProvisionCmd.Flags().BoolVar(&dryRunHS, "dry-run", false, "Show what would be sent without executing")
+	addProvisionWatchFlags(hsProvisionCmd)
 
 	hsKubeconfigCmd.Flags().StringVar(&hsKCChoice, "choice", "", "Kubeconfig type: management or hosted")
 	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/hypershift-{choice}-kubeconfig)")
