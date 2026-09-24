@@ -25,6 +25,14 @@ func TestProvisionZTP(t *testing.T) {
 			t.Errorf("Expected plan %s, got %s", testEnv, r.FormValue("plan"))
 		}
 
+		if r.FormValue("owner") != "testuser" {
+			t.Errorf("Expected owner testuser, got %s", r.FormValue("owner"))
+		}
+
+		if r.FormValue("mail_to") != "test@example.com" {
+			t.Errorf("Expected mail_to test@example.com, got %s", r.FormValue("mail_to"))
+		}
+
 		if r.FormValue("ztp_type") != "sno" {
 			t.Errorf("Expected ztp_type sno, got %s", r.FormValue("ztp_type"))
 		}
