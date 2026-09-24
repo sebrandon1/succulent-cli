@@ -234,6 +234,31 @@ func pollDelay(interval, remaining time.Duration) time.Duration {
 	return interval
 }
 
+func waitAfterPollError(ctx context.Context, w io.Writer, pollErr error, started, deadline time.Time, overrideSeconds int) (bool, error) {
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return false, ctxErr
+	}
+	if !time.Now().Before(deadline) {
+		return false, nil
+	}
+
+	interval := clusterReadyPollInterval(time.Since(started), time.Until(deadline), overrideSeconds)
+	if err := handlePollError(ctx, w, pollErr, pollDelay(interval, time.Until(deadline))); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func reportClusterReady(info *ClusterInfo, w io.Writer, controlPlaneOnly bool) (string, bool) {
+	if info.InstallerIP == "" || !isClusterReady(info.Nodes, controlPlaneOnly) {
+		return "", false
+	}
+
+	fmt.Fprintf(w, "Cluster ready. Installer IP: %s\n", info.InstallerIP)
+	printControlPlaneNotes(info.Nodes, w)
+	return info.InstallerIP, true
+}
+
 func printControlPlaneNotes(nodes []NodeInfo, w io.Writer) {
 	for _, node := range nodes {
 		if node.Status != StatusUp {
@@ -270,18 +295,14 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 
 		info, err := c.GetInfoPlan(requestCtx, env)
 		if err != nil {
-			if ctxErr := ctx.Err(); ctxErr != nil {
-				return "", ctxErr
+			retry, waitErr := waitAfterPollError(ctx, w, err, started, deadline, pollIntervalSeconds)
+			if waitErr != nil {
+				return "", waitErr
 			}
-			if !time.Now().Before(deadline) {
-				break
+			if retry {
+				continue
 			}
-
-			interval := clusterReadyPollInterval(time.Since(started), time.Until(deadline), pollIntervalSeconds)
-			if ctxErr := handlePollError(ctx, w, err, pollDelay(interval, time.Until(deadline))); ctxErr != nil {
-				return "", ctxErr
-			}
-			continue
+			break
 		}
 		if ctxErr := ctx.Err(); ctxErr != nil {
 			return "", ctxErr
@@ -296,16 +317,8 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 			return "", fmt.Errorf("cluster has permanent error: %s", msg)
 		}
 
-		if info.InstallerIP != "" {
-			ready := isClusterReady(info.Nodes, controlPlaneOnly)
-
-			if ready {
-				fmt.Fprintf(w, "Cluster ready. Installer IP: %s\n", info.InstallerIP)
-
-				printControlPlaneNotes(info.Nodes, w)
-
-				return info.InstallerIP, nil
-			}
+		if installerIP, ready := reportClusterReady(info, w, controlPlaneOnly); ready {
+			return installerIP, nil
 		}
 
 		interval := clusterReadyPollInterval(time.Since(started), time.Until(deadline), pollIntervalSeconds)
