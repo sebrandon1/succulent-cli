@@ -9,6 +9,6 @@ const (
 	defaultRemotePath       = "/root/ocp/auth/kubeconfig"
 	defaultDestDir          = "Downloads"
 	defaultMaxWaitMinutes   = 60
-	defaultPollIntervalSecs = 30
+	defaultPollIntervalSecs = 0
 	minPollIntervalSecs     = 5
 )

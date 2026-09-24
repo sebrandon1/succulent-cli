@@ -92,7 +92,7 @@ succulent-cli watch --env myenv --control-plane-only
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--max-wait` | `60` | Maximum minutes to wait |
-| `--poll-interval` | `30` | Seconds between status checks |
+| `--poll-interval` | adaptive | Seconds between status checks; `0` uses 60s for the first 30 minutes, 30s from 30–60 minutes, then 15s after 60 minutes or in the final 10 minutes. Set at least `5` to use a fixed interval. |
 | `--control-plane-only` | `false` | Ready when installer and masters are up |
 
 ## Provisioning Watch
@@ -107,9 +107,11 @@ succulent-cli reprovision --env myenv --owner user --email user@example.com --oc
 ```
 
 The command reports the installer IP when the cluster is ready. `--max-wait`
-defaults to 60 minutes, `--poll-interval` defaults to 30 seconds (minimum 5),
-and `--control-plane-only` considers the cluster ready when the installer and
-masters are up. `--watch` cannot be combined with `--dry-run`.
+defaults to 60 minutes. Polling adapts to elapsed time: 60 seconds for the first
+30 minutes, 30 seconds from 30–60 minutes, then 15 seconds after 60 minutes or
+during the final 10 minutes. Set `--poll-interval` to at least 5 for a fixed
+interval. `--control-plane-only` considers the cluster ready when the installer
+and masters are up. `--watch` cannot be combined with `--dry-run`.
 
 ## health
 
@@ -256,7 +258,7 @@ SSH host key checking is off by default (`StrictHostKeyChecking=no`). `--strict-
 | `--wait` | — | `false` | Wait for nodes to be up first |
 | `--control-plane-only` | — | `false` | With `--wait`, ready when installer and masters are up |
 | `--max-wait` | — | `60` | Maximum wait in minutes |
-| `--poll-interval` | — | `30` | Seconds between status checks |
+| `--poll-interval` | — | adaptive | Seconds between status checks; use at least `5` to set a fixed interval |
 | `--strict-ssh` | `SUCCULENT_STRICT_SSH` | `false` | Enable SSH host key checking |
 
 ## delete

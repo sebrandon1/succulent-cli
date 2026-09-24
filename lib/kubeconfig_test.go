@@ -343,6 +343,53 @@ func TestWaitForClusterReadyAllUp(t *testing.T) {
 	}
 }
 
+func TestWaitForClusterReady_AdaptivePolling(t *testing.T) {
+	tests := []struct {
+		name      string
+		elapsed   time.Duration
+		remaining time.Duration
+		want      time.Duration
+	}{
+		{name: "initial phase", elapsed: 0, remaining: 60 * time.Minute, want: time.Minute},
+		{name: "before 30 minutes", elapsed: 29*time.Minute + 59*time.Second, remaining: 90 * time.Minute, want: time.Minute},
+		{name: "30 minute phase", elapsed: 30 * time.Minute, remaining: 90 * time.Minute, want: 30 * time.Second},
+		{name: "before 60 minutes", elapsed: 59*time.Minute + 59*time.Second, remaining: 30 * time.Minute, want: 30 * time.Second},
+		{name: "60 minute phase", elapsed: 60 * time.Minute, remaining: 30 * time.Minute, want: 15 * time.Second},
+		{name: "approaching deadline", elapsed: 20 * time.Minute, remaining: 10 * time.Minute, want: 15 * time.Second},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := clusterReadyPollInterval(tt.elapsed, tt.remaining, 0); got != tt.want {
+				t.Errorf("clusterReadyPollInterval() = %s, want %s", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestWaitForClusterReady_UserOverride(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		elapsed   time.Duration
+		remaining time.Duration
+	}{
+		{name: "initial phase", elapsed: 0, remaining: 60 * time.Minute},
+		{name: "near deadline", elapsed: 20 * time.Minute, remaining: 5 * time.Minute},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, want := clusterReadyPollInterval(tt.elapsed, tt.remaining, 5), 5*time.Second; got != want {
+				t.Errorf("explicit poll interval = %s, want %s", got, want)
+			}
+		})
+	}
+}
+
+func TestPollDelayDoesNotExceedDeadline(t *testing.T) {
+	if got, want := pollDelay(time.Minute, 5*time.Second), 5*time.Second; got != want {
+		t.Errorf("poll delay = %s, want %s", got, want)
+	}
+}
+
 func TestWaitForClusterReadyEventuallyUp(t *testing.T) {
 	attempt := 0
 
