@@ -109,3 +109,48 @@ func TestAuditLogReadMissingFile(t *testing.T) {
 		t.Errorf("Expected empty history for a missing file, got %v (err %v)", entries, err)
 	}
 }
+
+func TestNewAuditLogRequiresPath(t *testing.T) {
+	if _, err := NewAuditLog(""); err == nil {
+		t.Fatal("Expected an error for an empty audit log path")
+	}
+}
+
+func TestAuditLogReadLastRejectsMalformedEntry(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit.log")
+	if err := os.WriteFile(path, []byte("not-json\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	log, err := NewAuditLog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := log.ReadLast(10); err == nil || !strings.Contains(err.Error(), "decoding audit entry") {
+		t.Fatalf("Expected malformed entry error, got %v", err)
+	}
+}
+
+func TestAuditLogReadLastNonPositiveLimit(t *testing.T) {
+	log, err := NewAuditLog(filepath.Join(t.TempDir(), "audit.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries, err := log.ReadLast(0)
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("Expected empty history for zero limit, got %v (err %v)", entries, err)
+	}
+}
+
+func TestAuditLogRecordReportsInvalidDirectory(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "file", "audit.log")
+	if err := os.WriteFile(filepath.Dir(path), []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	log, err := NewAuditLog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := log.Record(AuditEntry{Operation: "delete", Result: "success"}); err == nil {
+		t.Fatal("Expected an error when the audit log directory is a file")
+	}
+}
