@@ -86,6 +86,25 @@ func TestLogCommand(t *testing.T) {
 	}
 }
 
+func TestClientRequestsIncludeCLIVersionInUserAgent(t *testing.T) {
+	oldVersion := rootCmd.Version
+	SetVersion("1.2.3")
+	defer SetVersion(oldVersion)
+
+	cleanup := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("User-Agent"); got != "succulent-cli/1.2.3" {
+			t.Errorf("Expected User-Agent succulent-cli/1.2.3, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"get", "log", "--env", "testenv"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
 func TestDeleteCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()

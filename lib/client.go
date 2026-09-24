@@ -20,6 +20,7 @@ import (
 
 const (
 	DefaultSucculentURL = "https://succulent.eng.redhat.com"
+	defaultCLIVersion   = "dev"
 
 	// Size limits for response body reads to prevent memory exhaustion
 	MaxResponseSize = 10 * 1024 * 1024 // 10MB for kubeconfig, HTML, and log data
@@ -56,12 +57,13 @@ func friendlyHTTPError(statusCode int) string {
 }
 
 type Client struct {
-	BaseURL        string
-	HTTPClient     *http.Client
-	MaxRetries     int
-	RetryBaseDelay time.Duration
-	Timeout        time.Duration
-	Logger         *slog.Logger
+	BaseURL          string
+	HTTPClient       *http.Client
+	userAgentVersion string
+	MaxRetries       int
+	RetryBaseDelay   time.Duration
+	Timeout          time.Duration
+	Logger           *slog.Logger
 }
 
 func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Client, error) {
@@ -101,7 +103,8 @@ func NewClientWithTimeout(baseURL string, insecureSkipVerify bool, caCertPath st
 	}
 
 	return &Client{
-		BaseURL: baseURL,
+		BaseURL:          baseURL,
+		userAgentVersion: defaultCLIVersion,
 		HTTPClient: &http.Client{
 			Timeout:   timeout,
 			Transport: transport,
@@ -121,13 +124,36 @@ func (c *Client) WithTimeout(timeout time.Duration) *Client {
 	}
 
 	return &Client{
-		BaseURL:        c.BaseURL,
-		HTTPClient:     newHTTPClient,
-		MaxRetries:     c.MaxRetries,
-		RetryBaseDelay: c.RetryBaseDelay,
-		Timeout:        timeout,
-		Logger:         c.Logger,
+		BaseURL:          c.BaseURL,
+		HTTPClient:       newHTTPClient,
+		userAgentVersion: c.userAgentVersion,
+		MaxRetries:       c.MaxRetries,
+		RetryBaseDelay:   c.RetryBaseDelay,
+		Timeout:          timeout,
+		Logger:           c.Logger,
 	}
+}
+
+// SetUserAgentVersion sets the version sent in the HTTP User-Agent header.
+func (c *Client) SetUserAgentVersion(version string) {
+	if version != "" {
+		c.userAgentVersion = version
+	}
+}
+
+func (c *Client) newRequest(ctx context.Context, method, requestURL string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequestWithContext(ctx, method, requestURL, body)
+	if err != nil {
+		return nil, err
+	}
+
+	version := c.userAgentVersion
+	if version == "" {
+		version = defaultCLIVersion
+	}
+	req.Header.Set("User-Agent", "succulent-cli/"+version)
+
+	return req, nil
 }
 
 func (c *Client) logger() *slog.Logger {
@@ -235,7 +261,7 @@ func (c *Client) sleepWithJitter(ctx context.Context, attempt int) error {
 func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response, error) {
 	start := time.Now()
 	resp, err := c.doWithRetry(ctx, func() (*http.Request, error) {
-		return http.NewRequestWithContext(ctx, "GET", requestURL, nil)
+		return c.newRequest(ctx, http.MethodGet, requestURL, nil)
 	})
 	if err != nil {
 		err = fmt.Errorf("%w (check --url and --verify-ssl settings)", err)
@@ -262,7 +288,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 	encoded := data.Encode()
 
 	resp, err := c.doRequest(ctx, func() (*http.Request, error) {
-		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(encoded))
+		req, err := c.newRequest(ctx, http.MethodPost, endpoint, strings.NewReader(encoded))
 		if err != nil {
 			return nil, err
 		}
@@ -299,7 +325,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	encoded := data.Encode()
 
 	resp, err := c.doRequest(ctx, func() (*http.Request, error) {
-		req, err := http.NewRequestWithContext(ctx, "POST", endpoint, strings.NewReader(encoded))
+		req, err := c.newRequest(ctx, http.MethodPost, endpoint, strings.NewReader(encoded))
 		if err != nil {
 			return nil, err
 		}

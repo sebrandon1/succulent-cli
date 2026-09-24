@@ -106,6 +106,48 @@ func TestGetRawSuccess(t *testing.T) {
 	}
 }
 
+func TestUserAgentHeaderOnAllHTTPRequests(t *testing.T) {
+	var methods []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("User-Agent"); got != "succulent-cli/1.2.3" {
+			t.Errorf("Expected User-Agent succulent-cli/1.2.3, got %q", got)
+		}
+		methods = append(methods, r.Method)
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	client.SetUserAgentVersion("1.2.3")
+
+	resp, err := client.getRaw(context.Background(), server.URL+"/get")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	_ = resp.Body.Close()
+
+	if err := client.postForm(context.Background(), server.URL+"/post-form", nil); err != nil {
+		t.Fatalf("POST form failed: %v", err)
+	}
+
+	if _, err := client.postFormRaw(context.Background(), server.URL+"/post-form-raw", nil); err != nil {
+		t.Fatalf("POST raw form failed: %v", err)
+	}
+
+	wantMethods := []string{http.MethodGet, http.MethodPost, http.MethodPost}
+	if len(methods) != len(wantMethods) {
+		t.Fatalf("Expected %d requests, got %d", len(wantMethods), len(methods))
+	}
+	for i, want := range wantMethods {
+		if methods[i] != want {
+			t.Errorf("Request %d method = %q, want %q", i, methods[i], want)
+		}
+	}
+	if got := client.WithTimeout(time.Second).userAgentVersion; got != "1.2.3" {
+		t.Errorf("Expected WithTimeout to preserve User-Agent version, got %q", got)
+	}
+}
+
 func TestPostFormErrorStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
