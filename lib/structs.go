@@ -19,6 +19,7 @@ const (
 	formFieldMailToAlt = "mailto"
 
 	endpointRoot                 = "/"
+	endpointVersion              = "/version"
 	endpointInfoPlan             = "/infoplan/%s"
 	endpointLog                  = "/ztp_log/%s"
 	endpointReprovision          = "/exposecreate"
@@ -30,6 +31,13 @@ const (
 	endpointHypershiftProvision  = "/create_hypershift"
 	endpointHypershiftKubeconfig = "/hypershift_kubeconfig"
 )
+
+// ServerVersion describes version metadata from the succulent service.
+type ServerVersion struct {
+	APIVersion string `json:"apiVersion"`
+	Version    string `json:"version"`
+	GitCommit  string `json:"gitCommit,omitempty"`
+}
 
 // NodeInfo represents a single VM/node from the infoplan page.
 type NodeInfo struct {

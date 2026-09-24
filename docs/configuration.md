@@ -35,8 +35,11 @@ Viper reads `SUCCULENT_` plus the uppercase config key. These are the variables 
 | `SUCCULENT_DEFAULT_OWNER` | `default_owner` | — | — | Fallback for `--owner` |
 | `SUCCULENT_VERBOSE` | `verbose` | `--verbose`, `-v` | `false` | Debug logging to stderr |
 | `SUCCULENT_QUIET` | `quiet` | `--quiet` | `false` | Log errors only |
+| `SUCCULENT_SKIP_VERSION_CHECK` | `skip_version_check` | `--no-version-check` | `false` | Skip the best-effort server API version check |
 
 `--output` and `--timeout` are flags only; they have no environment variables. `--verbose` and `--quiet` are flags/env only; they are not stored by `config set`. They cannot be set together.
+
+The version check uses the server's `/version` JSON endpoint when available. Endpoint failures are ignored so they do not prevent commands from running.
 
 `--no-color` disables ANSI color in `list` and `status` table output. The `NO_COLOR` environment variable (any non-empty value) does the same; it is not a `SUCCULENT_*` variable.
 

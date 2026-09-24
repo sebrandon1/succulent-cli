@@ -12,7 +12,13 @@ import (
 )
 
 func setupTestServer(handler http.HandlerFunc) func() {
-	server := httptest.NewServer(handler)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			http.NotFound(w, r)
+			return
+		}
+		handler(w, r)
+	}))
 	viper.Set("url", server.URL)
 	viper.Set("env", "testenv")
 	viper.Set("verify_ssl", false)

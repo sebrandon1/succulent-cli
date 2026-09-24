@@ -44,6 +44,16 @@ func TestSetVersion(t *testing.T) {
 	}
 }
 
+func TestNoVersionCheckFlag(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("no-version-check")
+	if flag == nil {
+		t.Fatal("Expected --no-version-check flag on rootCmd, not found")
+	}
+	if flag.DefValue != "false" {
+		t.Errorf("Expected --no-version-check default 'false', got %q", flag.DefValue)
+	}
+}
+
 func TestGetSubcommands(t *testing.T) {
 	subcommands := getCmd.Commands()
 

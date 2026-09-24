@@ -17,6 +17,7 @@ import (
 var validEnvName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_-]*$`)
 
 var (
+	cliVersion       = "dev"
 	succulentURL     string
 	envName          string
 	verifySSL        bool
@@ -27,6 +28,7 @@ var (
 	sharedCache      *lib.Cache
 	maxWaitMinutes   int
 	pollIntervalSecs int
+	skipVersionCheck bool
 )
 
 var rootCmd = &cobra.Command{
@@ -58,6 +60,9 @@ kubeconfig retrieval, and environment deletion.`,
 		}
 
 		sharedClient.Logger = slog.Default()
+		if !viper.GetBool("skip_version_check") && cliVersion != "devel" && cliVersion != "dev" && cliVersion != "" {
+			warnOnVersionMismatch(cmd.Context(), sharedClient, cliVersion, os.Stderr)
+		}
 
 		sharedCache = lib.NewCache(configDir(), 60*time.Second)
 
@@ -81,6 +86,7 @@ kubeconfig retrieval, and environment deletion.`,
 
 func SetVersion(v string) {
 	rootCmd.Version = v
+	cliVersion = v
 }
 
 var getCmd = &cobra.Command{
@@ -184,6 +190,8 @@ func init() {
 		"Enable debug logging to stderr")
 	rootCmd.PersistentFlags().Bool("quiet", false,
 		"Log errors only")
+	rootCmd.PersistentFlags().BoolVar(&skipVersionCheck, "no-version-check", false,
+		"Skip checking server API version compatibility")
 	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false,
 		"Disable ANSI color in table output (also honors NO_COLOR)")
 
@@ -193,6 +201,7 @@ func init() {
 	_ = viper.BindPFlag("ca_cert", rootCmd.PersistentFlags().Lookup("ca-cert"))
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
+	_ = viper.BindPFlag("skip_version_check", rootCmd.PersistentFlags().Lookup("no-version-check"))
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(kubeconfigCmd)
