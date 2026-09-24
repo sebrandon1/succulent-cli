@@ -84,25 +84,24 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			ImageOverride:  hsImageOverride,
 		}
 
-		if dryRunHS {
-			printDryRun("provision Hypershift on", envName, req.FormValues())
-			return nil
-		}
-
-		if err := sharedClient.ProvisionHypershift(cmd.Context(), envName, &req); err != nil {
-			return fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
-		}
-		message := fmt.Sprintf("Hypershift provision request submitted for %s", envName)
-		message, err = waitForProvisioning(cmd, envName, "Hypershift provision", message)
-		if err != nil {
-			return err
-		}
-
-		return printResult(CommandResult{
-			Status:      provisionResultStatus(),
-			Environment: envName,
-			Message:     message,
-		}, outputFormat)
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			if dryRunHS {
+				printDryRun("provision Hypershift on", target, req.FormValues())
+				return fmt.Sprintf("[dry-run] Would provision Hypershift on %s", target), nil
+			}
+			if err := runAuditedOperationForEnvironment(target, "hypershift provision", auditParameters(
+				"owner", owner, "sno_tag", hsSNOTag, "sno_full_tag", hsSNOFullTag,
+				"hcp_tag", hsHCPTag, "hcp_full_tag", hsHCPFullTag,
+			), func() error {
+				return sharedClient.ProvisionHypershift(cmd.Context(), target, &req)
+			}); err != nil {
+				return "", fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
+			}
+			message := fmt.Sprintf("Hypershift provision request submitted for %s", target)
+			return waitForProvisioning(cmd, target, "Hypershift provision", message)
+		}, func(target, message string) error {
+			return printResult(CommandResult{Status: provisionResultStatus(), Environment: target, Message: message}, outputFormat)
+		}, dryRunHS)
 	},
 }
 
@@ -112,19 +111,34 @@ var hsKubeconfigCmd = &cobra.Command{
 	Example: `  succulent-cli hypershift kubeconfig --env myenv --choice management
   succulent-cli hypershift kubeconfig --env myenv --choice hosted`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		data, err := sharedClient.GetHypershiftKubeconfig(cmd.Context(), envName, hsKCChoice)
-		if err != nil {
-			return fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
-		}
-
-		dest, err := saveKubeconfig(data, hsKCDest, envName, "hypershift-"+hsKCChoice+"-kubeconfig")
-		if err != nil {
+		targets := currentEnvironmentTargets()
+		if err := validateBatchDestination(hsKCDest, targets); err != nil {
 			return err
 		}
-
-		fmt.Printf("Hypershift %s kubeconfig saved to: %s\n", hsKCChoice, dest)
-
-		return nil
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			destPath, err := environmentDestination(hsKCDest, target, targets)
+			if err != nil {
+				return "", err
+			}
+			var dest string
+			err = runAuditedOperationForEnvironment(target, "hypershift kubeconfig", auditParameters(
+				"choice", hsKCChoice, "destination", destPath,
+			), func() error {
+				data, err := sharedClient.GetHypershiftKubeconfig(cmd.Context(), target, hsKCChoice)
+				if err != nil {
+					return fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
+				}
+				dest, err = saveKubeconfig(data, destPath, target, "hypershift-"+hsKCChoice+"-kubeconfig")
+				return err
+			})
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("Hypershift %s kubeconfig saved to: %s", hsKCChoice, dest), nil
+		}, func(_ string, message string) error {
+			fmt.Println(message)
+			return nil
+		}, false)
 	},
 }
 

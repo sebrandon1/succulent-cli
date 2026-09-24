@@ -12,13 +12,33 @@ import (
 )
 
 func setupTestServer(handler http.HandlerFunc) func() {
-	server := httptest.NewServer(handler)
+	auditDir, err := os.MkdirTemp("", "succulent-cli-audit-test-")
+	if err != nil {
+		panic(err)
+	}
+	oldAuditPath, hadAuditPath := os.LookupEnv("SUCCULENT_AUDIT_LOG")
+	if err := os.Setenv("SUCCULENT_AUDIT_LOG", filepath.Join(auditDir, "audit.log")); err != nil {
+		panic(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			http.NotFound(w, r)
+			return
+		}
+		handler(w, r)
+	}))
 	viper.Set("url", server.URL)
 	viper.Set("env", "testenv")
 	viper.Set("verify_ssl", false)
 
 	return func() {
 		server.Close()
+		_ = os.RemoveAll(auditDir)
+		if hadAuditPath {
+			_ = os.Setenv("SUCCULENT_AUDIT_LOG", oldAuditPath)
+		} else {
+			_ = os.Unsetenv("SUCCULENT_AUDIT_LOG")
+		}
 		sharedClient = nil
 		viper.Set("url", "")
 		viper.Set("env", "")
@@ -126,6 +146,13 @@ func TestDeleteCommand(t *testing.T) {
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+	entries, err := sharedAuditLog.ReadLast(1)
+	if err != nil {
+		t.Fatalf("Reading delete audit entry failed: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Operation != "delete" || entries[0].Environment != "testenv" || entries[0].Result != "success" {
+		t.Errorf("Expected successful delete audit entry, got %+v", entries)
 	}
 }
 

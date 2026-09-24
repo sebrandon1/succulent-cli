@@ -33,7 +33,7 @@ succulent-cli sno kubeconfig --env myenv
 | `hypershift kubeconfig` | Download the Hypershift management or hosted kubeconfig |
 | `kubeconfig fetch` | SCP the kubeconfig from the installer node |
 | `delete` | Delete an environment (requires `--confirm`) |
-| `config` | Config and cache (`show`, `set`, `edit`, `init`, `path`, `cache`) |
+| `config` | Config, environment groups, operation history, and cache (`show`, `set`, `edit`, `init`, `path`, `groups`, `history`, `cache`) |
 | `completion install` | Install shell completion (bash, zsh, fish) |
 | `version` | Print the CLI version |
 
