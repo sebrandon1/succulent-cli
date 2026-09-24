@@ -93,25 +93,23 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			VMWorkersCount:       ztpVMWorkers,
 		}
 
-		if dryRunZTP {
-			printDryRun("provision ZTP on", envName, req.FormValues())
-			return nil
-		}
-
-		if err := runAuditedOperation("ztp provision", auditParameters(
-			"owner", owner, "type", ztpType, "sno_tag", ztpSNOTag, "sno_full_tag", ztpSNOFullTag,
-			"spoke_tag", ztpSpokeTag, "spoke_full_tag", ztpSpokeFullTag,
-		), func() error {
-			return sharedClient.ProvisionZTP(cmd.Context(), envName, &req)
-		}); err != nil {
-			return fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
-		}
-
-		return printResult(CommandResult{
-			Status:      "submitted",
-			Environment: envName,
-			Message:     fmt.Sprintf("ZTP provision request submitted for %s (type: %s)", envName, ztpType),
-		}, outputFormat)
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			if dryRunZTP {
+				printDryRun("provision ZTP on", target, req.FormValues())
+				return fmt.Sprintf("[dry-run] Would provision ZTP on %s", target), nil
+			}
+			if err := runAuditedOperationForEnvironment(target, "ztp provision", auditParameters(
+				"owner", owner, "type", ztpType, "sno_tag", ztpSNOTag, "sno_full_tag", ztpSNOFullTag,
+				"spoke_tag", ztpSpokeTag, "spoke_full_tag", ztpSpokeFullTag,
+			), func() error {
+				return sharedClient.ProvisionZTP(cmd.Context(), target, &req)
+			}); err != nil {
+				return "", fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
+			}
+			return fmt.Sprintf("ZTP provision request submitted for %s (type: %s)", target, ztpType), nil
+		}, func(target, message string) error {
+			return printResult(CommandResult{Status: "submitted", Environment: target, Message: message}, outputFormat)
+		}, dryRunZTP)
 	},
 }
 
@@ -121,23 +119,34 @@ var ztpKubeconfigCmd = &cobra.Command{
 	Example: `  succulent-cli ztp kubeconfig --env myenv --choice management
   succulent-cli ztp kubeconfig --env myenv --choice spoke`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		var dest string
-		err := runAuditedOperation("ztp kubeconfig", auditParameters("choice", ztpKCChoice, "destination", ztpKCDest), func() error {
-			data, err := sharedClient.GetZTPKubeconfig(cmd.Context(), envName, ztpKCChoice)
-			if err != nil {
-				return fmt.Errorf("fetching ZTP kubeconfig: %w", err)
-			}
-
-			dest, err = saveKubeconfig(data, ztpKCDest, envName, "ztp-"+ztpKCChoice+"-kubeconfig")
-			return err
-		})
-		if err != nil {
+		targets := currentEnvironmentTargets()
+		if err := validateBatchDestination(ztpKCDest, targets); err != nil {
 			return err
 		}
-
-		fmt.Printf("ZTP %s kubeconfig saved to: %s\n", ztpKCChoice, dest)
-
-		return nil
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			destPath, err := environmentDestination(ztpKCDest, target, targets)
+			if err != nil {
+				return "", err
+			}
+			var dest string
+			err = runAuditedOperationForEnvironment(target, "ztp kubeconfig", auditParameters(
+				"choice", ztpKCChoice, "destination", destPath,
+			), func() error {
+				data, err := sharedClient.GetZTPKubeconfig(cmd.Context(), target, ztpKCChoice)
+				if err != nil {
+					return fmt.Errorf("fetching ZTP kubeconfig: %w", err)
+				}
+				dest, err = saveKubeconfig(data, destPath, target, "ztp-"+ztpKCChoice+"-kubeconfig")
+				return err
+			})
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("ZTP %s kubeconfig saved to: %s", ztpKCChoice, dest), nil
+		}, func(_ string, message string) error {
+			fmt.Println(message)
+			return nil
+		}, false)
 	},
 }
 

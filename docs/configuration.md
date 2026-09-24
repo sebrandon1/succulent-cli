@@ -63,6 +63,37 @@ default_email: "user@example.com"
 default_owner: "myuser"
 ```
 
+## Environment Groups
+
+Create `~/.config/succulent-cli/groups.yaml` to define named sets of environments:
+
+```yaml
+groups:
+  staging:
+    - staging-hub
+    - staging-spoke-1
+  production:
+    - prod-east
+    - prod-west
+```
+
+View groups with `succulent-cli config groups list` and
+`succulent-cli config groups show staging`. Delete, reprovision, provision, or
+download kubeconfigs for a group by passing group names positionally, or pass a
+comma-separated environment list with `--env`:
+
+```bash
+succulent-cli delete staging --confirm
+succulent-cli reprovision staging --owner user --email user@example.com --ocp-tag 4.17 --confirm
+succulent-cli sno provision staging --owner user --email user@example.com --ocp-tag 4.17 --confirm
+succulent-cli delete --env staging-hub,staging-spoke-1 --confirm
+```
+
+Batch commands print the expanded environment list, continue after individual
+failures, and report a result for each environment. For kubeconfig downloads,
+the default destination includes the environment name. A custom `--dest` used
+for a batch must include `{env}`, such as `--dest ./kubeconfigs/{env}.yaml`.
+
 ## Shell Completion
 
 ```bash

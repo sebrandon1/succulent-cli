@@ -79,26 +79,25 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 			KcliParams:        reprovKcliParams,
 		}
 
-		if dryRunReprovision {
-			printDryRun("reprovision", envName, req.FormValues())
-			return nil
-		}
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			if dryRunReprovision {
+				printDryRun("reprovision", target, req.FormValues())
+				return fmt.Sprintf("[dry-run] Would reprovision %s", target), nil
+			}
 
-		// Reprovision can take several minutes, use 5-minute timeout
-		client := sharedClient.WithTimeout(5 * time.Minute)
-		if err := runAuditedOperation("reprovision", auditParameters(
-			"owner", owner, "ocp_tag", tag, "release_type", reprovVersion,
-		), func() error {
-			return client.Reprovision(cmd.Context(), envName, &req)
-		}); err != nil {
-			return fmt.Errorf("submitting reprovision request: %w; verify env exists with: succulent-cli list", err)
-		}
-
-		return printResult(CommandResult{
-			Status:      "submitted",
-			Environment: envName,
-			Message:     fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", envName, tag, reprovVersion),
-		}, outputFormat)
+			// Reprovision can take several minutes, use 5-minute timeout.
+			client := sharedClient.WithTimeout(5 * time.Minute)
+			if err := runAuditedOperationForEnvironment(target, "reprovision", auditParameters(
+				"owner", owner, "ocp_tag", tag, "release_type", reprovVersion,
+			), func() error {
+				return client.Reprovision(cmd.Context(), target, &req)
+			}); err != nil {
+				return "", fmt.Errorf("submitting reprovision request: %w; verify env exists with: succulent-cli list", err)
+			}
+			return fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", target, tag, reprovVersion), nil
+		}, func(target, message string) error {
+			return printResult(CommandResult{Status: "submitted", Environment: target, Message: message}, outputFormat)
+		}, dryRunReprovision)
 	},
 }
 

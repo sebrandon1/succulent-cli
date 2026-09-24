@@ -70,25 +70,23 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 			FullImageName: snoFullImage,
 		}
 
-		if dryRunSNO {
-			printDryRun("provision SNO on", envName, req.FormValues())
-			return nil
-		}
-
-		if err := runAuditedOperation("sno provision", auditParameters(
-			"owner", owner, "ocp_tag", ocpTag, "release_type", snoRelease,
-			"full_ocp_tag", snoFullTag,
-		), func() error {
-			return sharedClient.ProvisionSNO(cmd.Context(), envName, &req)
-		}); err != nil {
-			return fmt.Errorf("submitting SNO provision request: %w; verify env exists with: succulent-cli list", err)
-		}
-
-		return printResult(CommandResult{
-			Status:      "submitted",
-			Environment: envName,
-			Message:     fmt.Sprintf("SNO provision request submitted for %s", envName),
-		}, outputFormat)
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			if dryRunSNO {
+				printDryRun("provision SNO on", target, req.FormValues())
+				return fmt.Sprintf("[dry-run] Would provision SNO on %s", target), nil
+			}
+			if err := runAuditedOperationForEnvironment(target, "sno provision", auditParameters(
+				"owner", owner, "ocp_tag", ocpTag, "release_type", snoRelease,
+				"full_ocp_tag", snoFullTag,
+			), func() error {
+				return sharedClient.ProvisionSNO(cmd.Context(), target, &req)
+			}); err != nil {
+				return "", fmt.Errorf("submitting SNO provision request: %w; verify env exists with: succulent-cli list", err)
+			}
+			return fmt.Sprintf("SNO provision request submitted for %s", target), nil
+		}, func(target, message string) error {
+			return printResult(CommandResult{Status: "submitted", Environment: target, Message: message}, outputFormat)
+		}, dryRunSNO)
 	},
 }
 
@@ -98,23 +96,32 @@ var snoKubeconfigCmd = &cobra.Command{
 	Example: `  succulent-cli sno kubeconfig --env myenv
   succulent-cli sno kubeconfig --env myenv --dest ./kubeconfig`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		var dest string
-		err := runAuditedOperation("sno kubeconfig", auditParameters("destination", snoKCDest), func() error {
-			data, err := sharedClient.GetSNOKubeconfig(cmd.Context(), envName)
-			if err != nil {
-				return fmt.Errorf("fetching SNO kubeconfig: %w", err)
-			}
-
-			dest, err = saveKubeconfig(data, snoKCDest, envName, "sno-kubeconfig")
-			return err
-		})
-		if err != nil {
+		targets := currentEnvironmentTargets()
+		if err := validateBatchDestination(snoKCDest, targets); err != nil {
 			return err
 		}
-
-		fmt.Printf("SNO kubeconfig saved to: %s\n", dest)
-
-		return nil
+		return runForEnvironmentTargets(func(target string) (string, error) {
+			destPath, err := environmentDestination(snoKCDest, target, targets)
+			if err != nil {
+				return "", err
+			}
+			var dest string
+			err = runAuditedOperationForEnvironment(target, "sno kubeconfig", auditParameters("destination", destPath), func() error {
+				data, err := sharedClient.GetSNOKubeconfig(cmd.Context(), target)
+				if err != nil {
+					return fmt.Errorf("fetching SNO kubeconfig: %w", err)
+				}
+				dest, err = saveKubeconfig(data, destPath, target, "sno-kubeconfig")
+				return err
+			})
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("SNO kubeconfig saved to: %s", dest), nil
+		}, func(_ string, message string) error {
+			fmt.Println(message)
+			return nil
+		}, false)
 	},
 }
 

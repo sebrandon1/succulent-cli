@@ -2,6 +2,24 @@
 
 `--env` is required except on `list`, `health`, `version`, `config`, and `completion`. `--owner` and `--email` fall back to `default_owner` / `default_email` in config. On an interactive TTY, missing `--owner`, `--email`, and `--ocp-tag` (where that flag applies) are prompted instead of a hard error. All `SUCCULENT_*` environment variables are listed in [Configuration](configuration.md).
 
+## Environment Groups
+
+Define groups in `~/.config/succulent-cli/groups.yaml`, then inspect them with
+`succulent-cli config groups list` or `succulent-cli config groups show <name>`.
+Supported commands accept group names as positional arguments or a comma-separated
+list in `--env`:
+
+```bash
+succulent-cli delete staging production --confirm
+succulent-cli reprovision staging --owner user --email user@example.com --ocp-tag 4.17 --confirm
+succulent-cli ztp provision staging --owner user --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
+succulent-cli sno kubeconfig --env staging --dest './kubeconfigs/{env}.yaml'
+```
+
+Batch commands show the expanded targets, continue after individual failures,
+and print one result per environment. For a custom kubeconfig destination in a
+batch, include `{env}` in `--dest` so each environment writes to a separate file.
+
 ## Global Flags
 
 | Flag | Env Var | Default | Description |

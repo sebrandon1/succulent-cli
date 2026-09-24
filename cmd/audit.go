@@ -62,6 +62,10 @@ func currentAuditLog() (*lib.AuditLog, error) {
 }
 
 func runAuditedOperation(operation string, parameters map[string]string, action func() error) error {
+	return runAuditedOperationForEnvironment(envName, operation, parameters, action)
+}
+
+func runAuditedOperationForEnvironment(environment, operation string, parameters map[string]string, action func() error) error {
 	auditLog, err := currentAuditLog()
 	if err != nil {
 		return fmt.Errorf("initializing audit log: %w", err)
@@ -72,7 +76,7 @@ func runAuditedOperation(operation string, parameters map[string]string, action 
 		Timestamp:   time.Now().UTC(),
 		UserID:      userID(),
 		Operation:   operation,
-		Environment: envName,
+		Environment: environment,
 		Parameters:  parameters,
 		Result:      "success",
 	}

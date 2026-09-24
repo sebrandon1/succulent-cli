@@ -46,6 +46,30 @@ func TestRunAuditedOperationRecordsSuccessAndFailure(t *testing.T) {
 	}
 }
 
+func TestRunAuditedOperationForEnvironmentRecordsTarget(t *testing.T) {
+	log, err := lib.NewAuditLog(filepath.Join(t.TempDir(), "audit.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	previousLog, previousEnv := sharedAuditLog, envName
+	sharedAuditLog = log
+	envName = "default-env"
+	t.Cleanup(func() {
+		sharedAuditLog, envName = previousLog, previousEnv
+	})
+
+	if err := runAuditedOperationForEnvironment("group-env", "delete", nil, func() error { return nil }); err != nil {
+		t.Fatalf("runAuditedOperationForEnvironment() error = %v", err)
+	}
+	entries, err := log.ReadLast(1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Environment != "group-env" {
+		t.Fatalf("audit entries = %+v, want the selected environment", entries)
+	}
+}
+
 func TestAuditLogPathEnvironmentOverride(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "custom-audit.jsonl")
 	t.Setenv("SUCCULENT_AUDIT_LOG", path)
