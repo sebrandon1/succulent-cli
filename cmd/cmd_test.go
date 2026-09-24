@@ -12,7 +12,6 @@ import (
 )
 
 func setupTestServer(handler http.HandlerFunc) func() {
-	server := httptest.NewServer(handler)
 	auditDir, err := os.MkdirTemp("", "succulent-cli-audit-test-")
 	if err != nil {
 		panic(err)
@@ -21,7 +20,13 @@ func setupTestServer(handler http.HandlerFunc) func() {
 	if err := os.Setenv("SUCCULENT_AUDIT_LOG", filepath.Join(auditDir, "audit.log")); err != nil {
 		panic(err)
 	}
-
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			http.NotFound(w, r)
+			return
+		}
+		handler(w, r)
+	}))
 	viper.Set("url", server.URL)
 	viper.Set("env", "testenv")
 	viper.Set("verify_ssl", false)
