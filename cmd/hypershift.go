@@ -86,7 +86,12 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 				printDryRun("provision Hypershift on", target, req.FormValues())
 				return fmt.Sprintf("[dry-run] Would provision Hypershift on %s", target), nil
 			}
-			if err := sharedClient.ProvisionHypershift(cmd.Context(), target, &req); err != nil {
+			if err := runAuditedOperationForEnvironment(target, "hypershift provision", auditParameters(
+				"owner", owner, "sno_tag", hsSNOTag, "sno_full_tag", hsSNOFullTag,
+				"hcp_tag", hsHCPTag, "hcp_full_tag", hsHCPFullTag,
+			), func() error {
+				return sharedClient.ProvisionHypershift(cmd.Context(), target, &req)
+			}); err != nil {
 				return "", fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
 			}
 			return fmt.Sprintf("Hypershift provision request submitted for %s", target), nil
@@ -107,15 +112,21 @@ var hsKubeconfigCmd = &cobra.Command{
 			return err
 		}
 		return runForEnvironmentTargets(func(target string) (string, error) {
-			data, err := sharedClient.GetHypershiftKubeconfig(cmd.Context(), target, hsKCChoice)
-			if err != nil {
-				return "", fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
-			}
 			destPath, err := environmentDestination(hsKCDest, target, targets)
 			if err != nil {
 				return "", err
 			}
-			dest, err := saveKubeconfig(data, destPath, target, "hypershift-"+hsKCChoice+"-kubeconfig")
+			var dest string
+			err = runAuditedOperationForEnvironment(target, "hypershift kubeconfig", auditParameters(
+				"choice", hsKCChoice, "destination", destPath,
+			), func() error {
+				data, err := sharedClient.GetHypershiftKubeconfig(cmd.Context(), target, hsKCChoice)
+				if err != nil {
+					return fmt.Errorf("fetching Hypershift kubeconfig: %w", err)
+				}
+				dest, err = saveKubeconfig(data, destPath, target, "hypershift-"+hsKCChoice+"-kubeconfig")
+				return err
+			})
 			if err != nil {
 				return "", err
 			}

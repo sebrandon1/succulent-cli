@@ -32,6 +32,7 @@ batch, include `{env}` in `--dest` so each environment writes to a separate file
 | `--timeout` | — | `60` | HTTP request timeout in seconds |
 | `--verbose`, `-v` | `SUCCULENT_VERBOSE` | `false` | Debug logging to stderr (method, URL, status, duration) |
 | `--quiet` | `SUCCULENT_QUIET` | `false` | Log errors only. Cannot be combined with `--verbose` |
+| `--no-version-check` | `SUCCULENT_SKIP_VERSION_CHECK` | `false` | Skip the best-effort server API version check |
 | `--no-color` | `NO_COLOR` | `false` | Disable ANSI color in table output. Color is also off when stdout is not a TTY. |
 
 ## list
@@ -258,6 +259,7 @@ succulent-cli delete --env myenv --confirm
 ```bash
 succulent-cli config init
 succulent-cli config show
+succulent-cli config history --limit 25
 succulent-cli config path
 succulent-cli config set url https://succulent.example.com
 succulent-cli config edit

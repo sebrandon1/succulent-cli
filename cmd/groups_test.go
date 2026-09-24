@@ -139,6 +139,13 @@ func TestDeleteEnvironmentGroupContinuesAfterFailure(t *testing.T) {
 	if got, want := strings.Join(requested, ","), "env-one,env-two"; got != want {
 		t.Fatalf("delete requests = %q, want %q", got, want)
 	}
+	entries, err := sharedAuditLog.ReadLast(2)
+	if err != nil {
+		t.Fatalf("ReadLast() error = %v", err)
+	}
+	if len(entries) != 2 || entries[0].Environment != "env-one" || entries[0].Result != "success" || entries[1].Environment != "env-two" || entries[1].Result != "failure" {
+		t.Fatalf("batch audit entries = %+v, want per-target success and failure", entries)
+	}
 }
 
 func TestSupportsEnvironmentGroups(t *testing.T) {

@@ -12,13 +12,33 @@ import (
 )
 
 func setupTestServer(handler http.HandlerFunc) func() {
-	server := httptest.NewServer(handler)
+	auditDir, err := os.MkdirTemp("", "succulent-cli-audit-test-")
+	if err != nil {
+		panic(err)
+	}
+	oldAuditPath, hadAuditPath := os.LookupEnv("SUCCULENT_AUDIT_LOG")
+	if err := os.Setenv("SUCCULENT_AUDIT_LOG", filepath.Join(auditDir, "audit.log")); err != nil {
+		panic(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/version" {
+			http.NotFound(w, r)
+			return
+		}
+		handler(w, r)
+	}))
 	viper.Set("url", server.URL)
 	viper.Set("env", "testenv")
 	viper.Set("verify_ssl", false)
 
 	return func() {
 		server.Close()
+		_ = os.RemoveAll(auditDir)
+		if hadAuditPath {
+			_ = os.Setenv("SUCCULENT_AUDIT_LOG", oldAuditPath)
+		} else {
+			_ = os.Unsetenv("SUCCULENT_AUDIT_LOG")
+		}
 		sharedClient = nil
 		viper.Set("url", "")
 		viper.Set("env", "")
@@ -86,6 +106,25 @@ func TestLogCommand(t *testing.T) {
 	}
 }
 
+func TestClientRequestsIncludeCLIVersionInUserAgent(t *testing.T) {
+	oldVersion := rootCmd.Version
+	SetVersion("1.2.3")
+	defer SetVersion(oldVersion)
+
+	cleanup := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("User-Agent"); got != "succulent-cli/1.2.3" {
+			t.Errorf("Expected User-Agent succulent-cli/1.2.3, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	})
+	defer cleanup()
+
+	rootCmd.SetArgs([]string{"get", "log", "--env", "testenv"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("Expected no error, got %v", err)
+	}
+}
+
 func TestLogCommandFollow(t *testing.T) {
 	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -94,7 +133,6 @@ func TestLogCommandFollow(t *testing.T) {
 	defer cleanup()
 
 	rootCmd.SetArgs([]string{"get", "log", "--env", "testenv", "--follow"})
-
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
@@ -108,6 +146,13 @@ func TestDeleteCommand(t *testing.T) {
 
 	if err := rootCmd.Execute(); err != nil {
 		t.Fatalf("Expected no error, got %v", err)
+	}
+	entries, err := sharedAuditLog.ReadLast(1)
+	if err != nil {
+		t.Fatalf("Reading delete audit entry failed: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Operation != "delete" || entries[0].Environment != "testenv" || entries[0].Result != "success" {
+		t.Errorf("Expected successful delete audit entry, got %+v", entries)
 	}
 }
 

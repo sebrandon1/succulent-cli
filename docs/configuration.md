@@ -4,6 +4,7 @@
 succulent-cli config init     # Create ~/.config/succulent-cli/config.yaml
 succulent-cli config show     # Show resolved configuration
 succulent-cli config path     # Print config file path
+succulent-cli config history  # Show recent audited operations
 succulent-cli config set url https://succulent.example.com
 succulent-cli config edit     # Open the file in $EDITOR
 succulent-cli config cache status
@@ -35,10 +36,15 @@ Viper reads `SUCCULENT_` plus the uppercase config key. These are the variables 
 | `SUCCULENT_DEFAULT_OWNER` | `default_owner` | — | — | Fallback for `--owner` |
 | `SUCCULENT_VERBOSE` | `verbose` | `--verbose`, `-v` | `false` | Debug logging to stderr |
 | `SUCCULENT_QUIET` | `quiet` | `--quiet` | `false` | Log errors only |
+| `SUCCULENT_SKIP_VERSION_CHECK` | `skip_version_check` | `--no-version-check` | `false` | Skip the best-effort server API version check |
 
 `--output` and `--timeout` are flags only; they have no environment variables. `--verbose` and `--quiet` are flags/env only; they are not stored by `config set`. They cannot be set together.
 
+The version check uses the server's `/version` JSON endpoint when available. Endpoint failures are ignored so they do not prevent commands from running.
+
 `--no-color` disables ANSI color in `list` and `status` table output. The `NO_COLOR` environment variable (any non-empty value) does the same; it is not a `SUCCULENT_*` variable.
+
+Mutating operations and kubeconfig downloads are appended to `~/.config/succulent-cli/audit.log` as JSON Lines. The file is created with mode `0600`. Set `SUCCULENT_AUDIT_LOG` to use a different path. `succulent-cli config history --limit 25` displays the most recent entries; email addresses and SSH passwords are not recorded.
 
 `config set` / `config show` / `config init` cover `url`, `env`, `verify_ssl`, `strict_ssh`, `remote_user`, `remote_path`, `default_email`, and `default_owner`. Prefer `SUCCULENT_REMOTE_PASSWORD` or `--password` over storing a password in the config file.
 

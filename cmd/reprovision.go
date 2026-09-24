@@ -87,7 +87,11 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 
 			// Reprovision can take several minutes, use 5-minute timeout.
 			client := sharedClient.WithTimeout(5 * time.Minute)
-			if err := client.Reprovision(cmd.Context(), target, &req); err != nil {
+			if err := runAuditedOperationForEnvironment(target, "reprovision", auditParameters(
+				"owner", owner, "ocp_tag", tag, "release_type", reprovVersion,
+			), func() error {
+				return client.Reprovision(cmd.Context(), target, &req)
+			}); err != nil {
 				return "", fmt.Errorf("submitting reprovision request: %w; verify env exists with: succulent-cli list", err)
 			}
 			return fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", target, tag, reprovVersion), nil
