@@ -337,6 +337,7 @@ var cacheStatusCmd = &cobra.Command{
 
 func init() {
 	configCmd.AddCommand(configShowCmd)
+	configCmd.AddCommand(configHistoryCmd)
 	configCmd.AddCommand(configPathCmd)
 	configCmd.AddCommand(configInitCmd)
 	configCmd.AddCommand(configSetCmd)

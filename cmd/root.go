@@ -43,6 +43,11 @@ kubeconfig retrieval, and environment deletion.`,
 		if err := setupLogger(); err != nil {
 			return err
 		}
+		var err error
+		sharedAuditLog, err = lib.NewAuditLog(auditLogPath())
+		if err != nil {
+			return fmt.Errorf("initializing audit log: %w", err)
+		}
 
 		if skipEnvValidation(cmd) {
 			return nil
@@ -52,12 +57,11 @@ kubeconfig retrieval, and environment deletion.`,
 		verifySSL = viper.GetBool("verify_ssl")
 		caCertPath = viper.GetString("ca_cert")
 
-		var err error
-
 		sharedClient, err = lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
 		if err != nil {
 			return err
 		}
+		sharedClient.SetUserAgentVersion(cliVersion)
 
 		sharedClient.Logger = slog.Default()
 		if !viper.GetBool("skip_version_check") && cliVersion != "devel" && cliVersion != "dev" && cliVersion != "" {

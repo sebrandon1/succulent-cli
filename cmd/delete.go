@@ -26,7 +26,9 @@ var deleteCmd = &cobra.Command{
 			return fmt.Errorf("--confirm is required to delete an environment (use --dry-run to preview)")
 		}
 
-		if err := sharedClient.DeleteEnvironment(cmd.Context(), envName); err != nil {
+		if err := runAuditedOperation("delete", nil, func() error {
+			return sharedClient.DeleteEnvironment(cmd.Context(), envName)
+		}); err != nil {
 			return fmt.Errorf("deleting environment: %w", err)
 		}
 

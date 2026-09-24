@@ -33,56 +33,61 @@ verify the host against ~/.ssh/known_hosts instead.`,
   succulent-cli kubeconfig fetch --env myenv --strict-ssh
   succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		user := viper.GetString("remote_user")
-		password := viper.GetString("remote_password")
-		path := viper.GetString("remote_path")
+		return runAuditedOperation("kubeconfig fetch", auditParameters(
+			"destination", destPath, "ssh_user", viper.GetString("remote_user"),
+			"wait_for_ready", fmt.Sprintf("%t", waitForReady), "strict_ssh", fmt.Sprintf("%t", strictSSH),
+		), func() error {
+			user := viper.GetString("remote_user")
+			password := viper.GetString("remote_password")
+			path := viper.GetString("remote_path")
 
-		var installerIP string
+			var installerIP string
 
-		if waitForReady {
-			ip, err := sharedClient.WaitForClusterReady(cmd.Context(), envName, maxWaitMinutes, pollIntervalSecs, os.Stdout, controlPlaneOnly)
-			if err != nil {
-				return fmt.Errorf("waiting for cluster: %w", err)
+			if waitForReady {
+				ip, err := sharedClient.WaitForClusterReady(cmd.Context(), envName, maxWaitMinutes, pollIntervalSecs, os.Stdout, controlPlaneOnly)
+				if err != nil {
+					return fmt.Errorf("waiting for cluster: %w", err)
+				}
+
+				installerIP = ip
+			} else {
+				info, err := sharedClient.GetInfoPlan(cmd.Context(), envName)
+				if err != nil {
+					return fmt.Errorf("fetching cluster info: %w", err)
+				}
+
+				installerIP = info.InstallerIP
 			}
 
-			installerIP = ip
-		} else {
-			info, err := sharedClient.GetInfoPlan(cmd.Context(), envName)
-			if err != nil {
-				return fmt.Errorf("fetching cluster info: %w", err)
+			if installerIP == "" {
+				return fmt.Errorf("could not determine installer IP for %s; try: succulent-cli get info --env %s", envName, envName)
 			}
 
-			installerIP = info.InstallerIP
-		}
+			dest := destPath
+			if dest == "" {
+				var err error
 
-		if installerIP == "" {
-			return fmt.Errorf("could not determine installer IP for %s; try: succulent-cli get info --env %s", envName, envName)
-		}
-
-		dest := destPath
-		if dest == "" {
-			var err error
-
-			dest, err = defaultDestPath(envName, cmdNameKubeconfig)
-			if err != nil {
-				return err
+				dest, err = defaultDestPath(envName, cmdNameKubeconfig)
+				if err != nil {
+					return err
+				}
 			}
-		}
 
-		strict := viper.GetBool("strict_ssh")
-		if !strict {
-			if err := lib.RemoveSSHHostKeyContext(cmd.Context(), installerIP); err != nil {
-				fmt.Printf("Warning: could not remove SSH host key: %v\n", err)
+			strict := viper.GetBool("strict_ssh")
+			if !strict {
+				if err := lib.RemoveSSHHostKeyContext(cmd.Context(), installerIP); err != nil {
+					fmt.Printf("Warning: could not remove SSH host key: %v\n", err)
+				}
 			}
-		}
 
-		if err := lib.FetchKubeconfigContext(cmd.Context(), installerIP, user, password, path, dest, strict); err != nil {
-			return fmt.Errorf("fetching kubeconfig: %w", err)
-		}
+			if err := lib.FetchKubeconfigContext(cmd.Context(), installerIP, user, password, path, dest, strict); err != nil {
+				return fmt.Errorf("fetching kubeconfig: %w", err)
+			}
 
-		fmt.Printf("Kubeconfig saved to: %s\n", dest)
+			fmt.Printf("Kubeconfig saved to: %s\n", dest)
 
-		return nil
+			return nil
+		})
 	},
 }
 
