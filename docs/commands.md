@@ -240,6 +240,7 @@ succulent-cli delete --env myenv --confirm
 ```bash
 succulent-cli config init
 succulent-cli config show
+succulent-cli config history --limit 25
 succulent-cli config path
 succulent-cli config set url https://succulent.example.com
 succulent-cli config edit
