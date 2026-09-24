@@ -38,9 +38,6 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 		if !confirmSNO {
 			return fmt.Errorf("--confirm is required to provision an SNO cluster (use --dry-run to preview)")
 		}
-		if err := validateProvisionWatchFlags(dryRunSNO); err != nil {
-			return err
-		}
 
 		ocpTag := snoOCPTag
 		if ocpTag == "" && snoFullTag == "" && snoFullImage == "" {
@@ -81,17 +78,9 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 			if err := sharedClient.ProvisionSNO(cmd.Context(), target, &req); err != nil {
 				return "", fmt.Errorf("submitting SNO provision request: %w; verify env exists with: succulent-cli list", err)
 			}
-			message := fmt.Sprintf("SNO provision request submitted for %s", target)
-			installerIP, err := waitForProvisioning(cmd, target, "SNO provision")
-			if err != nil {
-				return "", err
-			}
-			if installerIP != "" {
-				message += fmt.Sprintf("; cluster ready (installer IP: %s)", installerIP)
-			}
-			return message, nil
+			return fmt.Sprintf("SNO provision request submitted for %s", target), nil
 		}, func(target, message string) error {
-			return printResult(CommandResult{Status: provisionResultStatus(), Environment: target, Message: message}, outputFormat)
+			return printResult(CommandResult{Status: "submitted", Environment: target, Message: message}, outputFormat)
 		}, dryRunSNO)
 	},
 }
@@ -136,7 +125,6 @@ func init() {
 	snoProvisionCmd.Flags().StringVar(&snoFullImage, "full-image", "", "Full container image reference; overrides all other tag flags")
 	snoProvisionCmd.Flags().BoolVar(&confirmSNO, "confirm", false, "Confirm provisioning (required)")
 	snoProvisionCmd.Flags().BoolVar(&dryRunSNO, "dry-run", false, "Show what would be sent without executing")
-	addProvisionWatchFlags(snoProvisionCmd)
 
 	snoKubeconfigCmd.Flags().StringVar(&snoKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/sno-kubeconfig)")
 }

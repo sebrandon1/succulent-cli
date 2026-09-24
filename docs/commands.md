@@ -20,22 +20,6 @@ Batch commands show the expanded targets, continue after individual failures,
 and print one result per environment. For a custom kubeconfig destination in a
 batch, include `{env}` in `--dest` so each environment writes to a separate file.
 
-## Provisioning Watch
-
-Add `--watch` to `reprovision`, `sno provision`, `ztp provision`, or
-`hypershift provision` to monitor cluster readiness after the service accepts
-the request:
-
-```bash
-succulent-cli sno provision --env myenv --owner user --email user@example.com --ocp-tag 4.17 --confirm --watch
-succulent-cli reprovision --env myenv --owner user --email user@example.com --ocp-tag 4.17 --confirm --watch --max-wait 90 --poll-interval 15
-```
-
-The command reports the installer IP when the cluster is ready. `--max-wait`
-defaults to 60 minutes, `--poll-interval` defaults to 30 seconds (minimum 5),
-and `--control-plane-only` considers the cluster ready when the installer and
-masters are up. `--watch` cannot be combined with `--dry-run`.
-
 ## Global Flags
 
 | Flag | Env Var | Default | Description |
