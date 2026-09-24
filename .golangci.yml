@@ -5,6 +5,8 @@ linters:
     - gocritic
     - gocyclo
     - misspell
+    - bodyclose
+    - noctx
     - unparam
   settings:
     goconst:
