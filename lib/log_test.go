@@ -3,6 +3,7 @@ package lib
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -133,6 +134,44 @@ func TestFollowLogHandlesLogLargerThanResponseLimit(t *testing.T) {
 	}
 }
 
+func TestFollowLogRejectsNonPositivePollInterval(t *testing.T) {
+	client := newTestClient("http://127.0.0.1")
+	err := client.FollowLog(context.Background(), testEnv, io.Discard, 0)
+	if err == nil {
+		t.Fatal("Expected an error for a non-positive poll interval, got nil")
+	}
+}
+
+func TestFollowLogReturnsErrorWhenLogShrinks(t *testing.T) {
+	responses := []string{"PLAY [all] ***\nTASK [one] ***\n", "short"}
+	requestCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, responses[requestCount])
+		requestCount++
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	err := client.FollowLog(context.Background(), testEnv, io.Discard, time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "shrank while following") {
+		t.Fatalf("Expected a shrinking log error, got %v", err)
+	}
+}
+
+func TestFollowLogReturnsWriterError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, "PLAY [all] ***\n")
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	wantErr := errors.New("writer failed")
+	err := client.FollowLog(context.Background(), testEnv, failingLogWriter{err: wantErr}, time.Millisecond)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("Expected writer error %v, got %v", wantErr, err)
+	}
+}
+
 type cancelingLogWriter struct {
 	cancel context.CancelFunc
 	buf    bytes.Buffer
@@ -142,4 +181,12 @@ func (w *cancelingLogWriter) Write(p []byte) (int, error) {
 	n, err := w.buf.Write(p)
 	w.cancel()
 	return n, err
+}
+
+type failingLogWriter struct {
+	err error
+}
+
+func (w failingLogWriter) Write([]byte) (int, error) {
+	return 0, w.err
 }
