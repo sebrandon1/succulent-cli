@@ -98,7 +98,12 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			return nil
 		}
 
-		if err := sharedClient.ProvisionZTP(cmd.Context(), envName, &req); err != nil {
+		if err := runAuditedOperation("ztp provision", auditParameters(
+			"owner", owner, "type", ztpType, "sno_tag", ztpSNOTag, "sno_full_tag", ztpSNOFullTag,
+			"spoke_tag", ztpSpokeTag, "spoke_full_tag", ztpSpokeFullTag,
+		), func() error {
+			return sharedClient.ProvisionZTP(cmd.Context(), envName, &req)
+		}); err != nil {
 			return fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
 		}
 
@@ -116,12 +121,16 @@ var ztpKubeconfigCmd = &cobra.Command{
 	Example: `  succulent-cli ztp kubeconfig --env myenv --choice management
   succulent-cli ztp kubeconfig --env myenv --choice spoke`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		data, err := sharedClient.GetZTPKubeconfig(cmd.Context(), envName, ztpKCChoice)
-		if err != nil {
-			return fmt.Errorf("fetching ZTP kubeconfig: %w", err)
-		}
+		var dest string
+		err := runAuditedOperation("ztp kubeconfig", auditParameters("choice", ztpKCChoice, "destination", ztpKCDest), func() error {
+			data, err := sharedClient.GetZTPKubeconfig(cmd.Context(), envName, ztpKCChoice)
+			if err != nil {
+				return fmt.Errorf("fetching ZTP kubeconfig: %w", err)
+			}
 
-		dest, err := saveKubeconfig(data, ztpKCDest, envName, "ztp-"+ztpKCChoice+"-kubeconfig")
+			dest, err = saveKubeconfig(data, ztpKCDest, envName, "ztp-"+ztpKCChoice+"-kubeconfig")
+			return err
+		})
 		if err != nil {
 			return err
 		}

@@ -75,7 +75,12 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 			return nil
 		}
 
-		if err := sharedClient.ProvisionSNO(cmd.Context(), envName, &req); err != nil {
+		if err := runAuditedOperation("sno provision", auditParameters(
+			"owner", owner, "ocp_tag", ocpTag, "release_type", snoRelease,
+			"full_ocp_tag", snoFullTag,
+		), func() error {
+			return sharedClient.ProvisionSNO(cmd.Context(), envName, &req)
+		}); err != nil {
 			return fmt.Errorf("submitting SNO provision request: %w; verify env exists with: succulent-cli list", err)
 		}
 
@@ -93,12 +98,16 @@ var snoKubeconfigCmd = &cobra.Command{
 	Example: `  succulent-cli sno kubeconfig --env myenv
   succulent-cli sno kubeconfig --env myenv --dest ./kubeconfig`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		data, err := sharedClient.GetSNOKubeconfig(cmd.Context(), envName)
-		if err != nil {
-			return fmt.Errorf("fetching SNO kubeconfig: %w", err)
-		}
+		var dest string
+		err := runAuditedOperation("sno kubeconfig", auditParameters("destination", snoKCDest), func() error {
+			data, err := sharedClient.GetSNOKubeconfig(cmd.Context(), envName)
+			if err != nil {
+				return fmt.Errorf("fetching SNO kubeconfig: %w", err)
+			}
 
-		dest, err := saveKubeconfig(data, snoKCDest, envName, "sno-kubeconfig")
+			dest, err = saveKubeconfig(data, snoKCDest, envName, "sno-kubeconfig")
+			return err
+		})
 		if err != nil {
 			return err
 		}
