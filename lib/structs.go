@@ -124,15 +124,12 @@ type SNOProvisionRequest struct {
 }
 
 func (r *ReprovisionRequest) FormValues() url.Values {
-	data := url.Values{
-		"parameter_mail_to":            {r.Email},
-		"parameter_owner":              {r.Owner},
-		"parameter_tag":                {r.Tag},
-		"parameter_version":            {r.Version},
-		"parameter_disk_size":          {r.DiskSize},
-		"parameter_virtual_workers":    {r.VirtualWorkers},
-		"parameter_additional_workers": {r.AdditionalWorkers},
-	}
+	data := ownerEmailFormValues(r.Owner, r.Email, "parameter_owner", "parameter_mail_to")
+	data.Set("parameter_tag", r.Tag)
+	data.Set("parameter_version", r.Version)
+	data.Set("parameter_disk_size", r.DiskSize)
+	data.Set("parameter_virtual_workers", r.VirtualWorkers)
+	data.Set("parameter_additional_workers", r.AdditionalWorkers)
 
 	setIfNotEmpty(data, "parameter_openshift_image", r.OpenshiftImage)
 	setIfNotEmpty(data, "parameter_end_date", r.EndDate)
@@ -142,10 +139,7 @@ func (r *ReprovisionRequest) FormValues() url.Values {
 }
 
 func (r *SNOProvisionRequest) FormValues() url.Values {
-	data := url.Values{
-		formFieldOwner:     {r.Owner},
-		formFieldMailToAlt: {r.Email},
-	}
+	data := ownerEmailFormValues(r.Owner, r.Email, formFieldOwner, formFieldMailToAlt)
 
 	setIfNotEmpty(data, "ocp_tag", r.OCPTag)
 	setIfNotEmpty(data, "ocp_release_type", r.ReleaseType)
@@ -156,10 +150,7 @@ func (r *SNOProvisionRequest) FormValues() url.Values {
 }
 
 func (r *ZTPRequest) FormValues() url.Values {
-	data := url.Values{
-		formFieldOwner:  {r.Owner},
-		formFieldMailTo: {r.Email},
-	}
+	data := ownerEmailFormValues(r.Owner, r.Email, formFieldOwner, formFieldMailTo)
 
 	setIfNotEmpty(data, "sno_tag", r.SNOTag)
 	setIfNotEmpty(data, "sno_release", r.SNORelease)
@@ -182,10 +173,7 @@ func (r *ZTPRequest) FormValues() url.Values {
 }
 
 func (r *HypershiftRequest) FormValues() url.Values {
-	data := url.Values{
-		formFieldOwner:  {r.Owner},
-		formFieldMailTo: {r.Email},
-	}
+	data := ownerEmailFormValues(r.Owner, r.Email, formFieldOwner, formFieldMailTo)
 
 	setIfNotEmpty(data, "sno_tag", r.SNOTag)
 	setIfNotEmpty(data, "sno_release", r.SNORelease)
@@ -202,5 +190,12 @@ func (r *HypershiftRequest) FormValues() url.Values {
 func setIfNotEmpty(data url.Values, key, value string) {
 	if value != "" {
 		data.Set(key, value)
+	}
+}
+
+func ownerEmailFormValues(owner, email, ownerField, emailField string) url.Values {
+	return url.Values{
+		ownerField: {owner},
+		emailField: {email},
 	}
 }
