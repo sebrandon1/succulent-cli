@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -43,6 +46,26 @@ func TestLoadEnvironmentGroupsRejectsInvalidMember(t *testing.T) {
 	}
 }
 
+func TestLoadEnvironmentGroupsRejectsMalformedAndEmptyGroups(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		contents string
+		wantErr  string
+	}{
+		{name: "malformed YAML", contents: "groups: [", wantErr: "parsing environment groups"},
+		{name: "invalid group name", contents: "groups:\n  invalid/group:\n    - env-one\n", wantErr: "invalid environment group name"},
+		{name: "empty group", contents: "groups:\n  staging: []\n", wantErr: "has no members"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			writeGroupsFile(t, tc.contents)
+			if _, err := loadEnvironmentGroups(); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("loadEnvironmentGroups() error = %v, want %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestResolveEnvironmentTargets(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	writeGroupsFile(t, "groups:\n  staging:\n    - env-one\n    - env-two\n")
@@ -58,6 +81,9 @@ func TestResolveEnvironmentTargets(t *testing.T) {
 
 func TestEnvironmentDestinationRequiresTemplateForBatch(t *testing.T) {
 	targets := []string{"env-one", "env-two"}
+	if got, err := environmentDestination("", "env-one", targets); err != nil || got != "" {
+		t.Fatalf("empty destination = %q, %v; want empty destination without error", got, err)
+	}
 	if _, err := environmentDestination("./kubeconfig.yaml", "env-one", targets); err == nil {
 		t.Fatal("expected batch destination without {env} to fail")
 	}
@@ -68,6 +94,9 @@ func TestEnvironmentDestinationRequiresTemplateForBatch(t *testing.T) {
 	}
 	if got != "./kubeconfigs/env-two.yaml" {
 		t.Fatalf("destination = %q", got)
+	}
+	if err := validateBatchDestination("./kubeconfigs/{env}.yaml", targets); err != nil {
+		t.Fatalf("validateBatchDestination() error = %v", err)
 	}
 }
 
@@ -113,15 +142,39 @@ func TestDeleteEnvironmentGroupContinuesAfterFailure(t *testing.T) {
 }
 
 func TestSupportsEnvironmentGroups(t *testing.T) {
-	cmd, _, err := rootCmd.Find([]string{"ztp", "provision"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !supportsEnvironmentGroups(cmd) {
-		t.Fatalf("supportsEnvironmentGroups(%q) = false", cmd.CommandPath())
+	for _, cmd := range []*cobra.Command{
+		deleteCmd, reprovisionCmd, snoProvisionCmd, snoKubeconfigCmd,
+		ztpProvisionCmd, ztpKubeconfigCmd, hsProvisionCmd, hsKubeconfigCmd, fetchKubeconfigCmd,
+	} {
+		if !supportsEnvironmentGroups(cmd) {
+			t.Errorf("supportsEnvironmentGroups(%q) = false", cmd.CommandPath())
+		}
 	}
 	if supportsEnvironmentGroups(&cobra.Command{Use: "other"}) {
 		t.Fatal("supportsEnvironmentGroups() accepted an unsupported command")
+	}
+}
+
+func TestCurrentEnvironmentTargets(t *testing.T) {
+	previousTargets, previousEnv := selectedEnvironments, envName
+	t.Cleanup(func() {
+		selectedEnvironments, envName = previousTargets, previousEnv
+	})
+
+	selectedEnvironments = []string{"env-one", "env-two"}
+	envName = "fallback"
+	if got := strings.Join(currentEnvironmentTargets(), ","); got != "env-one,env-two" {
+		t.Fatalf("selected targets = %q", got)
+	}
+
+	selectedEnvironments = nil
+	if got := strings.Join(currentEnvironmentTargets(), ","); got != "fallback" {
+		t.Fatalf("fallback targets = %q", got)
+	}
+
+	envName = ""
+	if got := currentEnvironmentTargets(); got != nil {
+		t.Fatalf("empty targets = %v, want nil", got)
 	}
 }
 
@@ -143,6 +196,13 @@ func TestResolveEnvironmentTargetsRejectsEmptyEntry(t *testing.T) {
 	}
 }
 
+func TestResolveEnvironmentTargetsRejectsInvalidDirectEnvironment(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	if _, err := resolveEnvironmentTargets("invalid/env", nil); err == nil || !strings.Contains(err.Error(), "invalid environment name") {
+		t.Fatalf("resolveEnvironmentTargets() error = %v, want invalid environment name error", err)
+	}
+}
+
 func TestResolveEnvironmentTargetsNoTarget(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	got, err := resolveEnvironmentTargets("", nil)
@@ -161,5 +221,108 @@ func TestRunForEnvironmentTargetsRejectsNoTargets(t *testing.T) {
 	t.Cleanup(func() { envName = previousEnv })
 	if err := runForEnvironmentTargets(func(string) (string, error) { return "", nil }, nil, false); err == nil {
 		t.Fatal("expected no target error")
+	}
+}
+
+func TestRunForEnvironmentTargetsSingleAndDryRun(t *testing.T) {
+	previousTargets, previousEnv := selectedEnvironments, envName
+	t.Cleanup(func() {
+		selectedEnvironments, envName = previousTargets, previousEnv
+	})
+	selectedEnvironments = []string{"env-one"}
+	envName = ""
+
+	called := false
+	err := runForEnvironmentTargets(func(target string) (string, error) {
+		if target != "env-one" {
+			t.Fatalf("action target = %q", target)
+		}
+		return "completed", nil
+	}, func(target, message string) error {
+		called = target == "env-one" && message == "completed"
+		return nil
+	}, false)
+	if err != nil || !called {
+		t.Fatalf("single-target run: error = %v, result callback called = %t", err, called)
+	}
+
+	called = false
+	err = runForEnvironmentTargets(func(string) (string, error) { return "preview", nil }, func(string, string) error {
+		called = true
+		return nil
+	}, true)
+	if err != nil || called {
+		t.Fatalf("single-target dry run: error = %v, result callback called = %t", err, called)
+	}
+}
+
+func TestRunForEnvironmentTargetsSingleActionError(t *testing.T) {
+	previousTargets, previousEnv := selectedEnvironments, envName
+	t.Cleanup(func() {
+		selectedEnvironments, envName = previousTargets, previousEnv
+	})
+	selectedEnvironments = []string{"env-one"}
+	envName = ""
+	wantErr := errors.New("operation failed")
+	callbackCalled := false
+
+	err := runForEnvironmentTargets(func(string) (string, error) { return "", wantErr }, func(string, string) error {
+		callbackCalled = true
+		return nil
+	}, false)
+	if !errors.Is(err, wantErr) || callbackCalled {
+		t.Fatalf("single-target error = %v, result callback called = %t", err, callbackCalled)
+	}
+}
+
+func TestRunForEnvironmentTargetsBatchJSON(t *testing.T) {
+	previousTargets, previousEnv, previousFormat := selectedEnvironments, envName, outputFormat
+	t.Cleanup(func() {
+		selectedEnvironments, envName, outputFormat = previousTargets, previousEnv, previousFormat
+	})
+	selectedEnvironments = []string{"env-one", "env-two"}
+	envName = ""
+	outputFormat = "json"
+
+	oldStdout, oldStderr := os.Stdout, os.Stderr
+	stdoutRead, stdoutWrite, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderrRead, stderrWrite, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Stdout, os.Stderr = stdoutWrite, stderrWrite
+	defer func() {
+		os.Stdout, os.Stderr = oldStdout, oldStderr
+		_ = stdoutRead.Close()
+		_ = stderrRead.Close()
+	}()
+
+	called := make([]string, 0, 2)
+	runErr := runForEnvironmentTargets(func(target string) (string, error) {
+		called = append(called, target)
+		return "completed", nil
+	}, nil, false)
+	_ = stdoutWrite.Close()
+	_ = stderrWrite.Close()
+	os.Stdout, os.Stderr = oldStdout, oldStderr
+	output, err := io.ReadAll(stdoutRead)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var outcomes []environmentOutcome
+	if err := json.Unmarshal(output, &outcomes); err != nil {
+		t.Fatalf("batch JSON output %q is invalid: %v", output, err)
+	}
+	if runErr != nil || strings.Join(called, ",") != "env-one,env-two" || len(outcomes) != 2 {
+		t.Fatalf("batch run error = %v, calls = %v, outcomes = %v", runErr, called, outcomes)
+	}
+	for _, outcome := range outcomes {
+		if outcome.Status != "success" || outcome.Message != "completed" {
+			t.Errorf("unexpected batch outcome: %+v", outcome)
+		}
 	}
 }
