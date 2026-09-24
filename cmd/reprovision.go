@@ -42,6 +42,9 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 		if !confirmReprovision {
 			return fmt.Errorf("--confirm is required to reprovision an environment (use --dry-run to preview)")
 		}
+		if err := validateProvisionWatchFlags(dryRunReprovision); err != nil {
+			return err
+		}
 
 		// Prefer new flags, fall back to deprecated if new flags not set
 		tag := reprovTag
@@ -89,11 +92,16 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 		if err := client.Reprovision(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting reprovision request: %w; verify env exists with: succulent-cli list", err)
 		}
+		message := fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", envName, tag, reprovVersion)
+		message, err = waitForProvisioning(cmd, envName, "reprovision", message)
+		if err != nil {
+			return err
+		}
 
 		return printResult(CommandResult{
-			Status:      "submitted",
+			Status:      provisionResultStatus(),
 			Environment: envName,
-			Message:     fmt.Sprintf("Reprovision request submitted for %s (OCP %s %s)", envName, tag, reprovVersion),
+			Message:     message,
 		}, outputFormat)
 	},
 }
@@ -117,6 +125,7 @@ func init() {
 
 	reprovisionCmd.Flags().BoolVar(&confirmReprovision, "confirm", false, "Confirm reprovisioning (required)")
 	reprovisionCmd.Flags().BoolVar(&dryRunReprovision, "dry-run", false, "Show what would be sent without executing")
+	addProvisionWatchFlags(reprovisionCmd)
 
 	rootCmd.AddCommand(reprovisionCmd)
 }

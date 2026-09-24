@@ -49,6 +49,9 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 		if !confirmHS {
 			return fmt.Errorf("--confirm is required to provision a Hypershift cluster (use --dry-run to preview)")
 		}
+		if err := validateProvisionWatchFlags(dryRunHS); err != nil {
+			return err
+		}
 
 		for _, v := range []struct{ tag, flag string }{
 			{hsSNOTag, "--sno-tag"}, {hsSNOFullTag, "--sno-full-tag"},
@@ -89,11 +92,16 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 		if err := sharedClient.ProvisionHypershift(cmd.Context(), envName, &req); err != nil {
 			return fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
 		}
+		message := fmt.Sprintf("Hypershift provision request submitted for %s", envName)
+		message, err = waitForProvisioning(cmd, envName, "Hypershift provision", message)
+		if err != nil {
+			return err
+		}
 
 		return printResult(CommandResult{
-			Status:      "submitted",
+			Status:      provisionResultStatus(),
 			Environment: envName,
-			Message:     fmt.Sprintf("Hypershift provision request submitted for %s", envName),
+			Message:     message,
 		}, outputFormat)
 	},
 }
@@ -133,6 +141,7 @@ func init() {
 	hsProvisionCmd.Flags().StringVar(&hsImageOverride, "image-override", "", "Hypershift operator image override")
 	hsProvisionCmd.Flags().BoolVar(&confirmHS, "confirm", false, "Confirm provisioning (required)")
 	hsProvisionCmd.Flags().BoolVar(&dryRunHS, "dry-run", false, "Show what would be sent without executing")
+	addProvisionWatchFlags(hsProvisionCmd)
 
 	hsKubeconfigCmd.Flags().StringVar(&hsKCChoice, "choice", "", "Kubeconfig type: management or hosted")
 	hsKubeconfigCmd.Flags().StringVar(&hsKCDest, "dest", "", "Local destination path (default: ~/Downloads/succulent/{env}/hypershift-{choice}-kubeconfig)")
