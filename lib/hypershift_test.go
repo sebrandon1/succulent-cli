@@ -29,6 +29,10 @@ func TestProvisionHypershift(t *testing.T) {
 			t.Errorf("Expected owner testuser, got %s", r.FormValue("owner"))
 		}
 
+		if r.FormValue("mail_to") != "test@example.com" {
+			t.Errorf("Expected mail_to test@example.com, got %s", r.FormValue("mail_to"))
+		}
+
 		if r.FormValue("sno_tag") != "4.17" {
 			t.Errorf("Expected sno_tag 4.17, got %s", r.FormValue("sno_tag"))
 		}
