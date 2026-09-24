@@ -25,6 +25,24 @@ func TestValidateKubeconfig(t *testing.T) {
 			data: []byte("apiVersion: v1\nkind: Config\nclusters: []\ncontexts: []\nusers: []\n"),
 		},
 		{
+			name: "kubeconfig without optional metadata",
+			data: []byte(`clusters:
+- cluster:
+    server: https://api.example.test:6443
+  name: cluster
+contexts:
+- context:
+    cluster: cluster
+    user: user
+  name: context
+current-context: context
+users:
+- name: user
+  user:
+    token: test-token
+`),
+		},
+		{
 			name:    "empty data",
 			data:    []byte{},
 			wantErr: true,
@@ -43,8 +61,8 @@ func TestValidateKubeconfig(t *testing.T) {
 			errMsg:  "unexpected kind",
 		},
 		{
-			name:    "missing kind",
-			data:    []byte("apiVersion: v1\nclusters: []\ncontexts: []\nusers: []\n"),
+			name:    "non-string kind",
+			data:    []byte("kind: []\nclusters: []\ncontexts: []\nusers: []\n"),
 			wantErr: true,
 			errMsg:  "unexpected kind",
 		},
@@ -53,6 +71,12 @@ func TestValidateKubeconfig(t *testing.T) {
 			data:    []byte("apiVersion: v1\nkind: Config\ncontexts: []\nusers: []\n"),
 			wantErr: true,
 			errMsg:  "missing required key: clusters",
+		},
+		{
+			name:    "missing contexts key",
+			data:    []byte("apiVersion: v1\nkind: Config\nclusters: []\nusers: []\n"),
+			wantErr: true,
+			errMsg:  "missing required key: contexts",
 		},
 		{
 			name:    "missing users key",

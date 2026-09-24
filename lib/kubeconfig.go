@@ -24,12 +24,15 @@ func ValidateKubeconfig(data []byte) error {
 		return fmt.Errorf("kubeconfig is not valid YAML: %w", err)
 	}
 
-	kind, _ := config["kind"].(string)
-	if kind != "Config" {
-		return fmt.Errorf("kubeconfig has unexpected kind: %q (expected \"Config\")", kind)
+	// Succulent's kubeconfig endpoint may omit this optional TypeMeta field.
+	if rawKind, ok := config["kind"]; ok {
+		kind, isString := rawKind.(string)
+		if !isString || kind != "Config" {
+			return fmt.Errorf("kubeconfig has unexpected kind: %v (expected \"Config\")", rawKind)
+		}
 	}
 
-	for _, key := range []string{"apiVersion", "clusters", "contexts", "users"} {
+	for _, key := range []string{"clusters", "contexts", "users"} {
 		if _, ok := config[key]; !ok {
 			return fmt.Errorf("kubeconfig missing required key: %s", key)
 		}
