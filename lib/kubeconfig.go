@@ -209,6 +209,31 @@ func handlePollError(ctx context.Context, w io.Writer, err error, interval time.
 	}
 }
 
+func clusterReadyPollInterval(elapsed, remaining time.Duration, overrideSeconds int) time.Duration {
+	if overrideSeconds > 0 {
+		return time.Duration(overrideSeconds) * time.Second
+	}
+
+	switch {
+	case elapsed >= time.Hour || remaining <= 10*time.Minute:
+		return 15 * time.Second
+	case elapsed >= 30*time.Minute:
+		return 30 * time.Second
+	default:
+		return time.Minute
+	}
+}
+
+func pollDelay(interval, remaining time.Duration) time.Duration {
+	if remaining <= 0 {
+		return 0
+	}
+	if interval > remaining {
+		return remaining
+	}
+	return interval
+}
+
 func printControlPlaneNotes(nodes []NodeInfo, w io.Writer) {
 	for _, node := range nodes {
 		if node.Status != StatusUp {
@@ -225,8 +250,10 @@ func printNodeStatuses(nodes []NodeInfo, pollIntervalSeconds int, w io.Writer) {
 }
 
 func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMinutes, pollIntervalSeconds int, w io.Writer, controlPlaneOnly bool) (string, error) {
-	deadline := time.Now().Add(time.Duration(maxWaitMinutes) * time.Minute)
-	interval := time.Duration(pollIntervalSeconds) * time.Second
+	started := time.Now()
+	deadline := started.Add(time.Duration(maxWaitMinutes) * time.Minute)
+	requestCtx, cancel := context.WithDeadline(ctx, deadline)
+	defer cancel()
 	attempt := 0
 
 	var lastNodes []NodeInfo
@@ -241,12 +268,26 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 		attempt++
 		fmt.Fprintf(w, "[Attempt %d] Checking node status for %s...\n", attempt, env)
 
-		info, err := c.GetInfoPlan(ctx, env)
+		info, err := c.GetInfoPlan(requestCtx, env)
 		if err != nil {
-			if ctxErr := handlePollError(ctx, w, err, interval); ctxErr != nil {
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return "", ctxErr
+			}
+			if !time.Now().Before(deadline) {
+				break
+			}
+
+			interval := clusterReadyPollInterval(time.Since(started), time.Until(deadline), pollIntervalSeconds)
+			if ctxErr := handlePollError(ctx, w, err, pollDelay(interval, time.Until(deadline))); ctxErr != nil {
 				return "", ctxErr
 			}
 			continue
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return "", ctxErr
+		}
+		if !time.Now().Before(deadline) {
+			break
 		}
 
 		lastNodes = info.Nodes
@@ -267,12 +308,18 @@ func (c *Client) WaitForClusterReady(ctx context.Context, env string, maxWaitMin
 			}
 		}
 
-		printNodeStatuses(info.Nodes, pollIntervalSeconds, w)
+		interval := clusterReadyPollInterval(time.Since(started), time.Until(deadline), pollIntervalSeconds)
+		wait := pollDelay(interval, time.Until(deadline))
+		waitSeconds := int(wait / time.Second)
+		if wait%time.Second != 0 {
+			waitSeconds++
+		}
+		printNodeStatuses(info.Nodes, waitSeconds, w)
 
 		select {
 		case <-ctx.Done():
 			return "", ctx.Err()
-		case <-time.After(interval):
+		case <-time.After(wait):
 		}
 	}
 

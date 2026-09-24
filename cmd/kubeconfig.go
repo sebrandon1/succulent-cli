@@ -33,6 +33,12 @@ verify the host against ~/.ssh/known_hosts instead.`,
   succulent-cli kubeconfig fetch --env myenv --strict-ssh
   succulent-cli kubeconfig fetch --env myenv --dest ./kubeconfig --user kni`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
+		if waitForReady {
+			if err := validatePollInterval(pollIntervalSecs); err != nil {
+				return err
+			}
+		}
+
 		user := viper.GetString("remote_user")
 		password := viper.GetString("remote_password")
 		path := viper.GetString("remote_path")
@@ -105,7 +111,7 @@ func init() {
 	fetchKubeconfigCmd.Flags().BoolVar(&strictSSH, "strict-ssh", false, "Enable SSH host key checking (insecure checking is the lab default)")
 	fetchKubeconfigCmd.Flags().BoolVar(&controlPlaneOnly, "control-plane-only", false, "With --wait, report ready when installer and masters are up")
 	fetchKubeconfigCmd.Flags().IntVar(&maxWaitMinutes, "max-wait", defaultMaxWaitMinutes, "Maximum minutes to wait for cluster ready")
-	fetchKubeconfigCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks when waiting")
+	fetchKubeconfigCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks when waiting (0 uses adaptive polling; minimum override is 5)")
 
 	_ = viper.BindPFlag("remote_user", fetchKubeconfigCmd.Flags().Lookup("user"))
 	_ = viper.BindPFlag("remote_password", fetchKubeconfigCmd.Flags().Lookup("password"))

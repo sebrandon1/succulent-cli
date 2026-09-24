@@ -107,10 +107,12 @@ func TestValidateProvisionWatchFlags(t *testing.T) {
 		wantErrMsg string
 	}{
 		{name: "disabled", watch: false, maxWait: 0, poll: 0},
+		{name: "adaptive polling", watch: true, maxWait: 1, poll: 0},
 		{name: "valid", watch: true, maxWait: 1, poll: minPollIntervalSecs},
 		{name: "dry run", watch: true, dryRun: true, maxWait: 1, poll: minPollIntervalSecs, wantErrMsg: "--watch cannot be used with --dry-run"},
 		{name: "nonpositive wait", watch: true, maxWait: 0, poll: minPollIntervalSecs, wantErrMsg: "--max-wait"},
 		{name: "short poll", watch: true, maxWait: 1, poll: minPollIntervalSecs - 1, wantErrMsg: "--poll-interval"},
+		{name: "negative poll", watch: true, maxWait: 1, poll: -1, wantErrMsg: "--poll-interval"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

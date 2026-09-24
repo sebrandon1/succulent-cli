@@ -19,8 +19,15 @@ var (
 func addProvisionWatchFlags(cmd *cobra.Command) {
 	cmd.Flags().BoolVar(&watchAfterProvision, "watch", false, "Wait for the cluster to become ready after submission")
 	cmd.Flags().IntVar(&provisionWaitMinutes, "max-wait", defaultMaxWaitMinutes, "Maximum minutes to wait with --watch")
-	cmd.Flags().IntVar(&provisionPollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between checks with --watch")
+	cmd.Flags().IntVar(&provisionPollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between checks with --watch (0 uses adaptive polling; minimum override is 5)")
 	cmd.Flags().BoolVar(&provisionControlPlaneOnly, "control-plane-only", false, "With --watch, consider ready when installer and masters are up")
+}
+
+func validatePollInterval(pollIntervalSecs int) error {
+	if pollIntervalSecs < 0 || (pollIntervalSecs > 0 && pollIntervalSecs < minPollIntervalSecs) {
+		return fmt.Errorf("--poll-interval must be 0 (adaptive) or at least %d seconds", minPollIntervalSecs)
+	}
+	return nil
 }
 
 func validateProvisionWatchFlags(dryRun bool) error {
@@ -33,8 +40,8 @@ func validateProvisionWatchFlags(dryRun bool) error {
 	if provisionWaitMinutes <= 0 {
 		return fmt.Errorf("--max-wait must be greater than zero")
 	}
-	if provisionPollIntervalSecs < minPollIntervalSecs {
-		return fmt.Errorf("--poll-interval must be at least %d seconds", minPollIntervalSecs)
+	if err := validatePollInterval(provisionPollIntervalSecs); err != nil {
+		return err
 	}
 	return nil
 }
@@ -67,8 +74,8 @@ Use --control-plane-only to report ready once the installer and masters are up, 
   succulent-cli watch --env myenv --control-plane-only
   succulent-cli watch --env myenv --max-wait 90 --poll-interval 15`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if pollIntervalSecs < minPollIntervalSecs {
-			return fmt.Errorf("--poll-interval must be at least %d seconds", minPollIntervalSecs)
+		if err := validatePollInterval(pollIntervalSecs); err != nil {
+			return err
 		}
 
 		ip, err := sharedClient.WaitForClusterReady(cmd.Context(), envName, maxWaitMinutes, pollIntervalSecs, os.Stderr, controlPlaneOnly)
@@ -86,7 +93,7 @@ Use --control-plane-only to report ready once the installer and masters are up, 
 
 func init() {
 	watchCmd.Flags().IntVar(&maxWaitMinutes, "max-wait", defaultMaxWaitMinutes, "Maximum minutes to wait")
-	watchCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks")
+	watchCmd.Flags().IntVar(&pollIntervalSecs, "poll-interval", defaultPollIntervalSecs, "Seconds between status checks (0 uses adaptive polling; minimum override is 5)")
 	watchCmd.Flags().BoolVar(&controlPlaneOnly, "control-plane-only", false, "Report ready when installer and masters are up (don't wait for workers)")
 
 	rootCmd.AddCommand(watchCmd)
