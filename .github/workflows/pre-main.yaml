@@ -50,7 +50,7 @@ jobs:
           go-version-file: go.mod
       - name: Run gosec
         # Upstream gosec v2.29.0 update commit, pinned to its full SHA.
-        uses: securego/gosec@57f161386e11e13e4c8a37255bc1a6502993d079
+        uses: securego/gosec@8c77519419e934a3e158dbf1a3fbbc0871b8c691
         with:
           args: ./...
 
