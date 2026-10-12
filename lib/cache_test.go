@@ -91,6 +91,39 @@ func TestCacheSetMultiple(t *testing.T) {
 	}
 }
 
+func TestCacheInvalidateInfoPreservesOtherEntries(t *testing.T) {
+	dir := t.TempDir()
+	cache := NewCache(dir, 60*time.Second)
+	cache.SetMultipleInfo(map[string]*ClusterInfo{
+		"env1": {Environment: "env1", InstallerIP: "192.168.1.1"},
+		"env2": {Environment: "env2", InstallerIP: "192.168.1.2"},
+	})
+
+	if err := cache.InvalidateInfo("env1"); err != nil {
+		t.Fatalf("InvalidateInfo() error = %v", err)
+	}
+
+	reloaded := NewCache(dir, 60*time.Second)
+	if _, ok := reloaded.GetInfo("env1"); ok {
+		t.Fatal("invalidated environment still has a cache hit")
+	}
+	if got, ok := reloaded.GetInfo("env2"); !ok || got.InstallerIP != "192.168.1.2" {
+		t.Fatalf("remaining environment cache entry = %+v, hit = %t; want env2 preserved", got, ok)
+	}
+}
+
+func TestCacheInvalidateInfoReportsPersistenceFailure(t *testing.T) {
+	cacheDir := filepath.Join(t.TempDir(), "not-a-directory")
+	if err := os.WriteFile(cacheDir, []byte("file blocks cache directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	cache := NewCache(cacheDir, 60*time.Second)
+	if err := cache.InvalidateInfo("testenv"); err == nil {
+		t.Fatal("InvalidateInfo() error = nil, want persistence error")
+	}
+}
+
 func TestCacheClear(t *testing.T) {
 	dir := t.TempDir()
 	cache := NewCache(dir, 60*time.Second)

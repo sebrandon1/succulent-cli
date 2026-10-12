@@ -107,6 +107,17 @@ func (c *Cache) SetMultipleInfo(entries map[string]*ClusterInfo) {
 	}
 }
 
+// InvalidateInfo removes the cached info for one environment and persists the
+// remaining entries.
+func (c *Cache) InvalidateInfo(env string) error {
+	cf := c.load()
+	delete(cf.Environments, env)
+	if err := c.save(cf); err != nil {
+		return fmt.Errorf("saving cache after invalidating %s: %w", env, err)
+	}
+	return nil
+}
+
 func (c *Cache) Clear() error {
 	return os.Remove(c.path())
 }

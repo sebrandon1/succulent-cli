@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -14,6 +15,23 @@ import (
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/viper"
 )
+
+func invalidateCachedInfo(env string) {
+	if sharedCache == nil {
+		return
+	}
+	if err := sharedCache.InvalidateInfo(env); err != nil {
+		slog.Default().Warn("cache invalidation failed", "environment", env, "err", err)
+	}
+}
+
+func runAndInvalidateInfoCache(env string, mutation func() error) error {
+	if err := mutation(); err != nil {
+		return err
+	}
+	invalidateCachedInfo(env)
+	return nil
+}
 
 var validOCPTag = regexp.MustCompile(`^\d+\.\d+(\.\d+(-[\w.-]+)?)?$`)
 

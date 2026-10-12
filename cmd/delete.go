@@ -27,7 +27,9 @@ var deleteCmd = &cobra.Command{
 				return fmt.Sprintf("[dry-run] Would delete %s", target), nil
 			}
 			if err := runAuditedOperationForEnvironment(target, "delete", nil, func() error {
-				return sharedClient.DeleteEnvironment(cmd.Context(), target)
+				return runAndInvalidateInfoCache(target, func() error {
+					return sharedClient.DeleteEnvironment(cmd.Context(), target)
+				})
 			}); err != nil {
 				return "", fmt.Errorf("deleting environment: %w", err)
 			}
