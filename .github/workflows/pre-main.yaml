@@ -49,10 +49,9 @@ jobs:
         with:
           go-version-file: go.mod
       - name: Run gosec
-        # Upstream gosec v2.29.0 update commit, pinned to its full SHA.
-        uses: securego/gosec@8c77519419e934a3e158dbf1a3fbbc0871b8c691
-        with:
-          args: ./...
+        # gosec v2.29.0 (and its action image) cannot load Go 1.27.2 export data;
+        # pinned to the upstream commit that bumps golang.org/x/tools to v0.52.0.
+        run: go run github.com/securego/gosec/v2/cmd/gosec@v2.29.1-0.20261012130337-71577268350e ./...
 
   vulncheck:
     runs-on: ubuntu-latest
