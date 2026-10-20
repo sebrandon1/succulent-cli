@@ -4,7 +4,7 @@ Guidance for working in this repository.
 
 ## Requirements
 
-- Go 1.26+
+- Go 1.27+
 
 ## Build
 
