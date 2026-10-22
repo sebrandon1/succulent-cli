@@ -105,7 +105,9 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 				"owner", owner, "type", ztpType, "sno_tag", ztpSNOTag, "sno_full_tag", ztpSNOFullTag,
 				"spoke_tag", ztpSpokeTag, "spoke_full_tag", ztpSpokeFullTag,
 			), func() error {
-				return sharedClient.ProvisionZTP(cmd.Context(), target, &req)
+				return runAndInvalidateInfoCache(target, func() error {
+					return sharedClient.ProvisionZTP(cmd.Context(), target, &req)
+				})
 			}); err != nil {
 				return "", fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
 			}

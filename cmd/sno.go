@@ -82,7 +82,9 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 				"owner", owner, "ocp_tag", ocpTag, "release_type", snoRelease,
 				"full_ocp_tag", snoFullTag,
 			), func() error {
-				return sharedClient.ProvisionSNO(cmd.Context(), target, &req)
+				return runAndInvalidateInfoCache(target, func() error {
+					return sharedClient.ProvisionSNO(cmd.Context(), target, &req)
+				})
 			}); err != nil {
 				return "", fmt.Errorf("submitting SNO provision request: %w; verify env exists with: succulent-cli list", err)
 			}
