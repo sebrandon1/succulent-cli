@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -21,7 +22,12 @@ func (c *Client) ListEnvironments(ctx context.Context) ([]EnvironmentInfo, error
 	}
 	defer resp.Body.Close()
 
-	return parseEnvironmentList(limitedBody(resp.Body, MaxResponseSize))
+	data, err := readLimited(resp.Body, MaxResponseSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch environment list: %w", err)
+	}
+
+	return parseEnvironmentList(bytes.NewReader(data))
 }
 
 func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, cache *Cache, w io.Writer) ([]EnvironmentDetail, error) {

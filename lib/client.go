@@ -1,21 +1,23 @@
 package lib
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"math/big"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/sebrandon1/go-toolbox/httpx"
+	"github.com/sebrandon1/go-toolbox/retry"
 )
 
 const (
@@ -94,24 +96,20 @@ func NewClientWithTimeout(baseURL string, insecureSkipVerify bool, caCertPath st
 		tlsConfig.RootCAs = pool
 	}
 
-	transport := &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 10 * time.Second,
-		}).DialContext,
+	httpOpts := httpx.Options{
+		Timeout:             timeout,
+		DialTimeout:         10 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig:     tlsConfig,
+		TLSConfig:           tlsConfig,
 	}
 
 	return &Client{
 		BaseURL:          baseURL,
 		userAgentVersion: defaultCLIVersion,
-		HTTPClient: &http.Client{
-			Timeout:   timeout,
-			Transport: transport,
-		},
-		MaxRetries:     3,
-		RetryBaseDelay: 1 * time.Second,
-		Timeout:        timeout,
+		HTTPClient:       httpx.NewHTTPClient(httpOpts),
+		MaxRetries:       3,
+		RetryBaseDelay:   1 * time.Second,
+		Timeout:          timeout,
 	}, nil
 }
 
@@ -142,9 +140,17 @@ func (c *Client) SetUserAgentVersion(version string) {
 }
 
 func (c *Client) newRequest(ctx context.Context, method, requestURL string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, requestURL, body)
+	req, err := httpx.NewRequest(ctx, method, requestURL)
 	if err != nil {
 		return nil, err
+	}
+
+	if body != nil {
+		req.Body = io.NopCloser(body)
+
+		if sized, ok := body.(interface{ Len() int }); ok {
+			req.ContentLength = int64(sized.Len())
+		}
 	}
 
 	version := c.userAgentVersion
@@ -185,8 +191,8 @@ func (c *Client) endpointURL(pathFmt string, args ...any) string {
 		path = fmt.Sprintf(pathFmt, args...)
 	}
 
-	joined, err := url.JoinPath(c.BaseURL, path)
-	if err != nil {
+	joined := httpx.JoinPath(c.BaseURL, path)
+	if joined == c.BaseURL && path != "" && !strings.HasSuffix(joined, path) {
 		return strings.TrimRight(c.BaseURL, "/") + "/" + strings.TrimLeft(path, "/")
 	}
 
@@ -209,53 +215,51 @@ func (c *Client) doRequest(ctx context.Context, newReq func() (*http.Request, er
 }
 
 func (c *Client) doWithRetry(ctx context.Context, newReq func() (*http.Request, error)) (*http.Response, error) {
-	var lastErr error
-
-	for attempt := range c.MaxRetries {
-		resp, err := c.doRequest(ctx, newReq)
-		if err != nil {
-			lastErr = err
-
-			if attempt < c.MaxRetries-1 {
-				if sleepErr := c.sleepWithJitter(ctx, attempt); sleepErr != nil {
-					return nil, sleepErr
-				}
-			}
-
-			continue
-		}
-
-		if resp.StatusCode >= 500 {
-			_ = resp.Body.Close()
-			lastErr = fmt.Errorf("server error: status code %d (%s)", resp.StatusCode, errHintServerLogs)
-
-			if attempt < c.MaxRetries-1 {
-				if sleepErr := c.sleepWithJitter(ctx, attempt); sleepErr != nil {
-					return nil, sleepErr
-				}
-			}
-
-			continue
-		}
-
-		return resp, nil
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 
-	return nil, lastErr
+	req, err := newReq()
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := retry.Do(ctx, c.HTTPClient, req,
+		retry.WithMaxAttempts(c.MaxRetries),
+		retry.WithBaseDelay(c.RetryBaseDelay),
+		retry.WithHTTPMaxDelay(retry.DefaultHTTPMaxDelay),
+		retry.WithRetryMethods(http.MethodGet),
+		retry.WithRetryStatus(func(status int) bool {
+			return status >= http.StatusInternalServerError
+		}),
+		retry.WithJitter(c.retryJitter),
+	)
+	if err != nil {
+		var httpErr *httpx.HTTPError
+		if errors.As(err, &httpErr) {
+			return nil, fmt.Errorf("server error: status code %d (%s)", httpErr.StatusCode, errHintServerLogs)
+		}
+
+		return nil, err
+	}
+
+	return resp, nil
 }
 
-func (c *Client) sleepWithJitter(ctx context.Context, attempt int) error {
-	delay := c.RetryBaseDelay * (1 << attempt)
-	n, _ := rand.Int(rand.Reader, big.NewInt(int64(delay/2)))
-	timer := time.NewTimer(delay + time.Duration(n.Int64()))
-	defer timer.Stop()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-timer.C:
-		return nil
+// retryJitter keeps the CLI's historical backoff shape: a delay of
+// delay + [0, delay/2). Each attempt's base delay doubles, as before.
+func (c *Client) retryJitter(delay time.Duration) time.Duration {
+	half := delay / 2
+	if half <= 0 {
+		return delay
 	}
+
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(half)))
+	if err != nil {
+		return delay
+	}
+
+	return delay + time.Duration(n.Int64())
 }
 
 func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response, error) {
@@ -362,64 +366,61 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	return body, nil
 }
 
-func readLimited(r io.Reader, limit int64) ([]byte, error) {
-	var buf bytes.Buffer
-	if err := copyLimited(&buf, r, limit); err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+// trackingReader remembers the first non-EOF read error so callers can tell a
+// transport failure apart from the response size cap.
+type trackingReader struct {
+	r   io.Reader
+	err error
 }
 
-func copyLimited(dst io.Writer, src io.Reader, limit int64) error {
-	_, err := io.Copy(dst, limitedBody(src, limit))
-
-	return err
-}
-
-// limitedBody wraps r so reads stop at limit bytes. A further byte from r
-// yields errResponseTooLarge instead of writing past the cap.
-func limitedBody(r io.Reader, limit int64) io.Reader {
-	return &cappedReader{r: r, limit: limit}
-}
-
-type cappedReader struct {
-	r     io.Reader
-	limit int64
-	read  int64
-}
-
-func (c *cappedReader) Read(p []byte) (int, error) {
-	if c.read > c.limit {
-		return 0, errResponseTooLarge(c.limit)
+func (t *trackingReader) Read(p []byte) (int, error) {
+	n, err := t.r.Read(p)
+	if err != nil && !errors.Is(err, io.EOF) {
+		t.err = err
 	}
-
-	if c.read == c.limit {
-		var extra [1]byte
-
-		n, err := c.r.Read(extra[:])
-		if n > 0 {
-			c.read++
-
-			return 0, errResponseTooLarge(c.limit)
-		}
-
-		if err != nil {
-			return 0, err
-		}
-
-		return 0, io.EOF
-	}
-
-	remain := c.limit - c.read
-	if int64(len(p)) > remain {
-		p = p[:remain]
-	}
-
-	n, err := c.r.Read(p)
-	c.read += int64(n)
 
 	return n, err
+}
+
+func readLimited(r io.Reader, limit int64) ([]byte, error) {
+	tracked := &trackingReader{r: r}
+
+	data, err := httpx.ReadLimited(tracked, limit)
+	if err != nil {
+		if tracked.err != nil {
+			return nil, tracked.err
+		}
+
+		return nil, errResponseTooLarge(limit)
+	}
+
+	return data, nil
+}
+
+// copyLimited streams at most limit bytes to dst and reports an error when src
+// has more. The overflow byte is never written.
+func copyLimited(dst io.Writer, src io.Reader, limit int64) error {
+	written, err := io.Copy(dst, io.LimitReader(src, limit))
+	if err != nil {
+		return err
+	}
+
+	if written < limit {
+		return nil
+	}
+
+	var extra [1]byte
+
+	n, err := src.Read(extra[:])
+	if n > 0 {
+		return errResponseTooLarge(limit)
+	}
+
+	if err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+
+	return nil
 }
 
 func errResponseTooLarge(limit int64) error {

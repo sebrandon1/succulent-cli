@@ -1,12 +1,12 @@
 package lib
 
 import (
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/sebrandon1/go-toolbox/jsonstore"
 )
 
 type cachedInfoEntry struct {
@@ -19,28 +19,23 @@ type cacheFile struct {
 }
 
 type Cache struct {
-	dir string
-	ttl time.Duration
+	dir   string
+	ttl   time.Duration
+	store *jsonstore.Store[cacheFile]
 }
 
 func NewCache(dir string, ttl time.Duration) *Cache {
-	return &Cache{dir: dir, ttl: ttl}
-}
-
-func (c *Cache) path() string {
-	return filepath.Join(c.dir, "cache.json")
+	return &Cache{
+		dir: dir,
+		ttl: ttl,
+		// Compact JSON and the cache.json name keep the on-disk format
+		// compatible with earlier releases.
+		store: jsonstore.New[cacheFile](filepath.Join(dir, "cache.json"), jsonstore.WithIndent(false)),
+	}
 }
 
 func (c *Cache) load() *cacheFile {
-	data, err := os.ReadFile(c.path())
-	if err != nil {
-		return &cacheFile{Environments: make(map[string]cachedInfoEntry)}
-	}
-
-	var cf cacheFile
-	if err := json.Unmarshal(data, &cf); err != nil {
-		return &cacheFile{Environments: make(map[string]cachedInfoEntry)}
-	}
+	cf, _ := c.store.LoadOr(cacheFile{Environments: make(map[string]cachedInfoEntry)})
 
 	if cf.Environments == nil {
 		cf.Environments = make(map[string]cachedInfoEntry)
@@ -50,16 +45,11 @@ func (c *Cache) load() *cacheFile {
 }
 
 func (c *Cache) save(cf *cacheFile) error {
-	if err := os.MkdirAll(c.dir, 0o750); err != nil {
-		return fmt.Errorf("creating cache directory: %w", err)
+	if err := c.store.Save(*cf); err != nil {
+		return fmt.Errorf("saving cache: %w", err)
 	}
 
-	data, err := json.Marshal(cf)
-	if err != nil {
-		return fmt.Errorf("marshaling cache: %w", err)
-	}
-
-	return os.WriteFile(c.path(), data, 0o600)
+	return nil
 }
 
 func (c *Cache) GetInfo(env string) (*ClusterInfo, bool) {
@@ -108,5 +98,5 @@ func (c *Cache) SetMultipleInfo(entries map[string]*ClusterInfo) {
 }
 
 func (c *Cache) Clear() error {
-	return os.Remove(c.path())
+	return c.store.Delete()
 }

@@ -1,6 +1,7 @@
 package lib
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -28,7 +29,12 @@ func (c *Client) GetInfoPlan(ctx context.Context, env string) (*ClusterInfo, err
 	}
 	defer resp.Body.Close()
 
-	return parseInfoPlan(env, limitedBody(resp.Body, MaxResponseSize))
+	data, err := readLimited(resp.Body, MaxResponseSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch infoplan for %s: %w", env, err)
+	}
+
+	return parseInfoPlan(env, bytes.NewReader(data))
 }
 
 func parseInfoPlan(env string, r io.Reader) (*ClusterInfo, error) {
