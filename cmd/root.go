@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sebrandon1/go-toolbox/cobrautil"
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -102,8 +103,8 @@ kubeconfig retrieval, and environment deletion.`,
 }
 
 func SetVersion(v string) {
-	rootCmd.Version = v
-	cliVersion = v
+	cobrautil.SetVersion(rootCmd, v)
+	cliVersion = rootCmd.Version
 }
 
 var getCmd = &cobra.Command{
@@ -234,5 +235,5 @@ func init() {
 }
 
 func Execute() error {
-	return rootCmd.Execute()
+	return cobrautil.Execute(rootCmd)
 }

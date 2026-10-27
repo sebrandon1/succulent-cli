@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sebrandon1/go-toolbox/cliout"
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/viper"
 )
@@ -24,14 +24,7 @@ type CommandResult struct {
 }
 
 func printJSON(data interface{}) error {
-	output, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshaling JSON: %w", err)
-	}
-
-	fmt.Println(string(output))
-
-	return nil
+	return cliout.PrintJSON(os.Stdout, data)
 }
 
 func printResult(result CommandResult, format string) error {
