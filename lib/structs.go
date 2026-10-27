@@ -105,6 +105,9 @@ type ZTPRequest struct {
 	BMMastersHosts       string `json:"bm_masters_hosts,omitempty"`
 	BMWorkersHosts       string `json:"bm_workers_hosts,omitempty"`
 	VMWorkersCount       string `json:"vm_workers_count,omitempty"`
+	EnableIPv6           bool   `json:"enable_ipv6,omitempty"`
+	HubIPVersion         string `json:"hub_ipv,omitempty"`
+	SpokeIPVersion       string `json:"spoke_ipv,omitempty"`
 }
 
 // ReprovisionRequest represents the MNO reprovision form data.
@@ -160,22 +163,31 @@ func (r *SNOProvisionRequest) FormValues() url.Values {
 func (r *ZTPRequest) FormValues() url.Values {
 	data := ownerEmailFormValues(r.Owner, r.Email, formFieldOwner, formFieldMailTo)
 
-	setIfNotEmpty(data, "sno_tag", r.SNOTag)
+	// The server returns 500 when the form's text inputs are missing, so send
+	// them even when empty, as a browser does.
+	data.Set("sno_tag", r.SNOTag)
 	setIfNotEmpty(data, "sno_release", r.SNORelease)
-	setIfNotEmpty(data, "sno_full_tag", r.SNOFullTag)
-	setIfNotEmpty(data, "ztp_tag", r.ZTPTag)
+	data.Set("sno_full_tag", r.SNOFullTag)
+	data.Set("ztp_tag", r.ZTPTag)
 	setIfNotEmpty(data, "ztp_release", r.ZTPRelease)
-	setIfNotEmpty(data, "ztp_full_tag", r.ZTPFullTag)
+	data.Set("ztp_full_tag", r.ZTPFullTag)
 	setIfNotEmpty(data, "ztp_type", r.ZTPType)
 
 	if r.StopBeforeDeployment {
 		data.Set("stop_before_deployment", "on")
 	}
 
-	setIfNotEmpty(data, "vm-masters-count", r.VMMastersCount)
-	setIfNotEmpty(data, "bm-masters-hosts", r.BMMastersHosts)
-	setIfNotEmpty(data, "bm-workers-hosts", r.BMWorkersHosts)
-	setIfNotEmpty(data, "vm-workers-count", r.VMWorkersCount)
+	data.Set("vm-masters-count", r.VMMastersCount)
+	data.Set("bm-masters-hosts", r.BMMastersHosts)
+	data.Set("bm-workers-hosts", r.BMWorkersHosts)
+	data.Set("vm-workers-count", r.VMWorkersCount)
+
+	// The form only offers the IP versions once IPv6 networking is enabled.
+	if r.EnableIPv6 {
+		data.Set("enable_ipv6", "on")
+		setIfNotEmpty(data, "hub_ipv", r.HubIPVersion)
+		setIfNotEmpty(data, "spoke_ipv", r.SpokeIPVersion)
+	}
 
 	return data
 }

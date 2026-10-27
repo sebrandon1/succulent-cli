@@ -192,6 +192,9 @@ succulent-cli ztp provision --env myenv --owner myuser --email user@example.com 
 | `--bm-masters` | — | Comma-separated baremetal masters (MNO only) |
 | `--bm-workers` | — | Comma-separated baremetal workers |
 | `--vm-workers` | `1` | Number of VM workers |
+| `--ipv6` | `false` | Enable IPv6 networking |
+| `--hub-ipv` | `dual` | Hub IP version with `--ipv6`: `dual` or `ipv6` |
+| `--spoke-ipv` | `ipv6` | Spoke IP version with `--ipv6`: `ipv6` or `dual` |
 | `--confirm` | `false` | Confirm provisioning (required unless `--dry-run`) |
 | `--dry-run` | `false` | Print the request without submitting |
 

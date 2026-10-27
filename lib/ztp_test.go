@@ -220,3 +220,55 @@ func TestProvisionZTPAllFields(t *testing.T) {
 		t.Fatalf("ProvisionZTP failed: %v", err)
 	}
 }
+
+func TestZTPRequestFormValuesIPv6(t *testing.T) {
+	req := &ZTPRequest{
+		Owner:          "testuser",
+		Email:          "test@example.com",
+		EnableIPv6:     true,
+		HubIPVersion:   "dual",
+		SpokeIPVersion: "dual",
+	}
+
+	data := req.FormValues()
+	for field, want := range map[string]string{"enable_ipv6": "on", "hub_ipv": "dual", "spoke_ipv": "dual"} {
+		if got := data.Get(field); got != want {
+			t.Errorf("%s = %q, want %q", field, got, want)
+		}
+	}
+}
+
+func TestZTPRequestFormValuesIPv6Disabled(t *testing.T) {
+	req := &ZTPRequest{
+		Owner:          "testuser",
+		Email:          "test@example.com",
+		HubIPVersion:   "dual",
+		SpokeIPVersion: "ipv6",
+	}
+
+	data := req.FormValues()
+	for _, field := range []string{"enable_ipv6", "hub_ipv", "spoke_ipv"} {
+		if data.Has(field) {
+			t.Errorf("%s should not be sent without EnableIPv6, got %q", field, data.Get(field))
+		}
+	}
+}
+
+func TestZTPRequestFormValuesSendsEmptyTextInputs(t *testing.T) {
+	req := &ZTPRequest{
+		Owner:      "testuser",
+		Email:      "test@example.com",
+		SNOTag:     "4.17",
+		SNORelease: "nightly",
+		ZTPTag:     "4.17",
+		ZTPRelease: "nightly",
+		ZTPType:    "mno",
+	}
+
+	data := req.FormValues()
+	for _, field := range []string{"sno_full_tag", "ztp_full_tag", "vm-masters-count", "bm-masters-hosts", "bm-workers-hosts", "vm-workers-count"} {
+		if !data.Has(field) {
+			t.Errorf("%s should be sent even when empty", field)
+		}
+	}
+}

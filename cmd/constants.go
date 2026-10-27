@@ -11,4 +11,6 @@ const (
 	defaultMaxWaitMinutes   = 60
 	defaultPollIntervalSecs = 0
 	minPollIntervalSecs     = 5
+	ipVersionDual           = "dual"
+	ipVersionIPv6           = "ipv6"
 )
