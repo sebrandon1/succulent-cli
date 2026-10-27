@@ -24,6 +24,9 @@ var (
 	ztpBMMasters    string
 	ztpBMWorkers    string
 	ztpVMWorkers    string
+	ztpIPv6         bool
+	ztpHubIPv       string
+	ztpSpokeIPv     string
 	ztpKCChoice     string
 	ztpKCDest       string
 )
@@ -48,7 +51,8 @@ Full tags override their corresponding short tag + release type flags.
 
 When stdin is a TTY, missing --owner and --email are prompted instead of failing immediately.`,
 	Example: `  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --confirm
-  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm`,
+  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm
+  succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --ipv6 --spoke-ipv dual --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		if !confirmZTP {
 			return fmt.Errorf("--confirm is required to provision a ZTP cluster (use --dry-run to preview)")
@@ -74,6 +78,10 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			return err
 		}
 
+		if err := validateZTPIPVersions(cmd, ztpIPv6, ztpHubIPv, ztpSpokeIPv); err != nil {
+			return err
+		}
+
 		owner, email, err := resolveOwnerEmail(ztpOwner, ztpEmail)
 		if err != nil {
 			return err
@@ -94,6 +102,9 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			BMMastersHosts:       ztpBMMasters,
 			BMWorkersHosts:       ztpBMWorkers,
 			VMWorkersCount:       ztpVMWorkers,
+			EnableIPv6:           ztpIPv6,
+			HubIPVersion:         ztpHubIPv,
+			SpokeIPVersion:       ztpSpokeIPv,
 		}
 
 		return runForEnvironmentTargets(func(target string) (string, error) {
@@ -104,6 +115,7 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 			if err := runAuditedOperationForEnvironment(target, "ztp provision", auditParameters(
 				"owner", owner, "type", ztpType, "sno_tag", ztpSNOTag, "sno_full_tag", ztpSNOFullTag,
 				"spoke_tag", ztpSpokeTag, "spoke_full_tag", ztpSpokeFullTag,
+				"ipv6", fmt.Sprint(ztpIPv6), "hub_ipv", ztpHubIPv, "spoke_ipv", ztpSpokeIPv,
 			), func() error {
 				return sharedClient.ProvisionZTP(cmd.Context(), target, &req)
 			}); err != nil {
@@ -154,6 +166,20 @@ var ztpKubeconfigCmd = &cobra.Command{
 	},
 }
 
+// validateZTPIPVersions checks the --hub-ipv/--spoke-ipv values and rejects
+// setting them without --ipv6, since they are only sent with --ipv6.
+func validateZTPIPVersions(cmd *cobra.Command, ipv6 bool, hubIPv, spokeIPv string) error {
+	for _, v := range []struct{ value, flag string }{{hubIPv, "hub-ipv"}, {spokeIPv, "spoke-ipv"}} {
+		if v.value != ipVersionDual && v.value != ipVersionIPv6 {
+			return fmt.Errorf("--%s must be dual or ipv6, got %q", v.flag, v.value)
+		}
+		if !ipv6 && cmd.Flags().Changed(v.flag) {
+			return fmt.Errorf("--%s requires --ipv6", v.flag)
+		}
+	}
+	return nil
+}
+
 func init() {
 	ztpProvisionCmd.Flags().StringVar(&ztpOwner, "owner", "", "Username (owner)")
 	ztpProvisionCmd.Flags().StringVar(&ztpEmail, "email", "", "Email address for notifications")
@@ -169,6 +195,9 @@ func init() {
 	ztpProvisionCmd.Flags().StringVar(&ztpBMMasters, "bm-masters", "", "Comma-separated baremetal master hosts (MNO only)")
 	ztpProvisionCmd.Flags().StringVar(&ztpBMWorkers, "bm-workers", "", "Comma-separated baremetal worker hosts")
 	ztpProvisionCmd.Flags().StringVar(&ztpVMWorkers, "vm-workers", "1", "Number of VM workers")
+	ztpProvisionCmd.Flags().BoolVar(&ztpIPv6, "ipv6", false, "Enable IPv6 networking (sets the hub and spoke IP versions)")
+	ztpProvisionCmd.Flags().StringVar(&ztpHubIPv, "hub-ipv", ipVersionDual, "Hub IP version with --ipv6: dual or ipv6")
+	ztpProvisionCmd.Flags().StringVar(&ztpSpokeIPv, "spoke-ipv", ipVersionIPv6, "Spoke IP version with --ipv6: ipv6 or dual")
 	ztpProvisionCmd.Flags().BoolVar(&confirmZTP, "confirm", false, "Confirm provisioning (required)")
 	ztpProvisionCmd.Flags().BoolVar(&dryRunZTP, "dry-run", false, "Show what would be sent without executing")
 	addProvisionWatchFlags(ztpProvisionCmd)
