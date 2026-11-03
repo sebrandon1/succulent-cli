@@ -41,65 +41,77 @@ management service.
 Supports cluster info, provisioning (MNO and SNO), log streaming,
 kubeconfig retrieval, and environment deletion.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if err := setupLogger(); err != nil {
+		if err := persistentPreRun(cmd, args); err != nil {
 			return err
 		}
-		var err error
-		sharedAuditLog, err = lib.NewAuditLog(auditLogPath())
-		if err != nil {
-			return fmt.Errorf("initializing audit log: %w", err)
-		}
 
-		if skipEnvValidation(cmd) {
-			return nil
-		}
-
-		succulentURL = viper.GetString("url")
-		verifySSL = viper.GetBool("verify_ssl")
-		caCertPath = viper.GetString("ca_cert")
-
-		sharedClient, err = lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
-		if err != nil {
-			return err
-		}
-		sharedClient.SetUserAgentVersion(cliVersion)
-
-		sharedClient.Logger = slog.Default()
-		if !viper.GetBool("skip_version_check") && cliVersion != "devel" && cliVersion != "dev" && cliVersion != "" {
-			warnOnVersionMismatch(cmd.Context(), sharedClient, cliVersion, os.Stderr)
-		}
-
-		sharedCache = lib.NewCache(configDir(), 60*time.Second)
-		selectedEnvironments = nil
-
-		if supportsEnvironmentGroups(cmd) {
-			targets, err := resolveEnvironmentTargets(viper.GetString("env"), args)
-			if err != nil {
-				return err
-			}
-			selectedEnvironments = targets
-			if len(targets) > 0 {
-				envName = targets[0]
-				return nil
-			}
-		}
-
-		if skipEnvRequirement(cmd) {
-			return nil
-		}
-
-		envName = viper.GetString("env")
-
-		if envName == "" {
-			return fmt.Errorf("--env is required (set via flag, SUCCULENT_ENV env var, or config file at %s/config.yaml)", configDir())
-		}
-
-		if !validEnvName.MatchString(envName) {
-			return fmt.Errorf("invalid environment name %q: must be alphanumeric with hyphens or underscores (e.g., cnfdt16, my-env-01)", envName)
-		}
+		// Flags and --env are valid, so any later error is a runtime failure
+		// (API, network, server): print the error without the usage text.
+		cmd.SilenceUsage = true
 
 		return nil
 	},
+}
+
+func persistentPreRun(cmd *cobra.Command, args []string) error {
+	if err := setupLogger(); err != nil {
+		return err
+	}
+	var err error
+	sharedAuditLog, err = lib.NewAuditLog(auditLogPath())
+	if err != nil {
+		return fmt.Errorf("initializing audit log: %w", err)
+	}
+
+	if skipEnvValidation(cmd) {
+		return nil
+	}
+
+	succulentURL = viper.GetString("url")
+	verifySSL = viper.GetBool("verify_ssl")
+	caCertPath = viper.GetString("ca_cert")
+
+	sharedClient, err = lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
+	if err != nil {
+		return err
+	}
+	sharedClient.SetUserAgentVersion(cliVersion)
+
+	sharedClient.Logger = slog.Default()
+	if !viper.GetBool("skip_version_check") && cliVersion != "devel" && cliVersion != "dev" && cliVersion != "" {
+		warnOnVersionMismatch(cmd.Context(), sharedClient, cliVersion, os.Stderr)
+	}
+
+	sharedCache = lib.NewCache(configDir(), 60*time.Second)
+	selectedEnvironments = nil
+
+	if supportsEnvironmentGroups(cmd) {
+		targets, err := resolveEnvironmentTargets(viper.GetString("env"), args)
+		if err != nil {
+			return err
+		}
+		selectedEnvironments = targets
+		if len(targets) > 0 {
+			envName = targets[0]
+			return nil
+		}
+	}
+
+	if skipEnvRequirement(cmd) {
+		return nil
+	}
+
+	envName = viper.GetString("env")
+
+	if envName == "" {
+		return fmt.Errorf("--env is required (set via flag, SUCCULENT_ENV env var, or config file at %s/config.yaml)", configDir())
+	}
+
+	if !validEnvName.MatchString(envName) {
+		return fmt.Errorf("invalid environment name %q: must be alphanumeric with hyphens or underscores (e.g., cnfdt16, my-env-01)", envName)
+	}
+
+	return nil
 }
 
 func SetVersion(v string) {

@@ -1,11 +1,14 @@
 package cmd
 
 import (
+	"bytes"
+	"net/http"
 	"strings"
 	"testing"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func TestEnvFlagExists(t *testing.T) {
@@ -283,5 +286,68 @@ func TestFlagParsing_VerboseQuietConflict(t *testing.T) {
 
 	if !strings.Contains(err.Error(), "cannot both be set") {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func executeCapturingOutput(t *testing.T, args ...string) (string, error) {
+	t.Helper()
+
+	var out bytes.Buffer
+	rootCmd.SetOut(&out)
+	rootCmd.SetErr(&out)
+	rootCmd.SetArgs(args)
+	t.Cleanup(func() {
+		rootCmd.SetOut(nil)
+		rootCmd.SetErr(nil)
+		logCmd.SilenceUsage = false
+	})
+
+	err := rootCmd.Execute()
+
+	return out.String(), err
+}
+
+func TestRuntimeErrorDoesNotPrintUsage(t *testing.T) {
+	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	})
+	defer cleanup()
+
+	out, err := executeCapturingOutput(t, "get", "log", "--env", "testenv")
+	if err == nil {
+		t.Fatal("expected an error from a 404 response")
+	}
+	if strings.Contains(out, "Usage:") {
+		t.Errorf("runtime error printed usage text:\n%s", out)
+	}
+	if !strings.Contains(out, "Error:") {
+		t.Errorf("expected the error to be printed, got:\n%s", out)
+	}
+}
+
+func TestFlagErrorStillPrintsUsage(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+
+	out, err := executeCapturingOutput(t, "get", "log", "--env", "testenv", "--no-such-flag")
+	if err == nil {
+		t.Fatal("expected an error for an unknown flag")
+	}
+	if !strings.Contains(out, "Usage:") {
+		t.Errorf("flag error should print usage, got:\n%s", out)
+	}
+}
+
+func TestMissingEnvStillPrintsUsage(t *testing.T) {
+	cleanup := setupTestServer(okHandler)
+	defer cleanup()
+	viper.Set("env", "")
+
+	out, err := executeCapturingOutput(t, "get", "log")
+	if err == nil || !strings.Contains(err.Error(), "--env is required") {
+		t.Fatalf("expected a missing --env error, got %v", err)
+	}
+	if !strings.Contains(out, "Usage:") {
+		t.Errorf("missing --env should print usage, got:\n%s", out)
 	}
 }
