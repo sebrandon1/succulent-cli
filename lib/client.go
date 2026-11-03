@@ -58,6 +58,23 @@ func friendlyHTTPError(statusCode int) string {
 	}
 }
 
+// HTTPStatusError reports an unexpected HTTP status from the service. Its
+// message is the same friendly description the CLI has always printed.
+type HTTPStatusError struct {
+	StatusCode int
+}
+
+func (e *HTTPStatusError) Error() string {
+	return friendlyHTTPError(e.StatusCode)
+}
+
+// IsHTTPStatus reports whether err wraps an HTTPStatusError with the given code.
+func IsHTTPStatus(err error, code int) bool {
+	var statusErr *HTTPStatusError
+
+	return errors.As(err, &statusErr) && statusErr.StatusCode == code
+}
+
 type Client struct {
 	BaseURL          string
 	HTTPClient       *http.Client
@@ -276,7 +293,7 @@ func (c *Client) getRaw(ctx context.Context, requestURL string) (*http.Response,
 
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
-		err = fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		err = &HTTPStatusError{StatusCode: resp.StatusCode}
 		c.logHTTP(http.MethodGet, requestURL, resp.StatusCode, err, time.Since(start))
 
 		return nil, err
@@ -311,7 +328,7 @@ func (c *Client) postForm(ctx context.Context, endpoint string, data url.Values)
 
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated &&
 		resp.StatusCode != http.StatusFound && resp.StatusCode != http.StatusSeeOther {
-		err = fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		err = &HTTPStatusError{StatusCode: resp.StatusCode}
 		c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, err, time.Since(start))
 
 		return err
@@ -355,7 +372,7 @@ func (c *Client) postFormRaw(ctx context.Context, endpoint string, data url.Valu
 	}
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		err = fmt.Errorf("%s", friendlyHTTPError(resp.StatusCode))
+		err = &HTTPStatusError{StatusCode: resp.StatusCode}
 		c.logHTTP(http.MethodPost, endpoint, resp.StatusCode, err, time.Since(start))
 
 		return nil, err

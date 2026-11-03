@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -719,4 +720,24 @@ func TestClient_NilLoggerNoPanic(t *testing.T) {
 		t.Fatalf("nil logger should not panic, got %v", err)
 	}
 	defer resp.Body.Close()
+}
+
+func TestHTTPStatusError(t *testing.T) {
+	err := fmt.Errorf("fetching: %w", &HTTPStatusError{StatusCode: http.StatusInternalServerError})
+
+	if got, want := (&HTTPStatusError{StatusCode: http.StatusNotFound}).Error(), friendlyHTTPError(http.StatusNotFound); got != want {
+		t.Errorf("Error() = %q, want the friendly message %q", got, want)
+	}
+	if !IsHTTPStatus(err, http.StatusInternalServerError) {
+		t.Error("IsHTTPStatus should match a wrapped HTTPStatusError with the same code")
+	}
+	if IsHTTPStatus(err, http.StatusNotFound) {
+		t.Error("IsHTTPStatus matched a different status code")
+	}
+	if IsHTTPStatus(errors.New("plain"), http.StatusInternalServerError) {
+		t.Error("IsHTTPStatus matched an error that is not an HTTPStatusError")
+	}
+	if IsHTTPStatus(nil, http.StatusInternalServerError) {
+		t.Error("IsHTTPStatus matched a nil error")
+	}
 }

@@ -1,7 +1,10 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
@@ -160,6 +163,7 @@ var ztpKubeconfigCmd = &cobra.Command{
 			if err != nil {
 				return "", err
 			}
+			warnIfNoProvisionedNodes(cmd.Context(), target, os.Stderr)
 			return fmt.Sprintf("ZTP %s kubeconfig saved to: %s", ztpKCChoice, dest), nil
 		}, func(_ string, message string) error {
 			fmt.Println(message)
@@ -212,4 +216,16 @@ func init() {
 	ztpCmd.AddCommand(ztpKubeconfigCmd)
 
 	rootCmd.AddCommand(ztpCmd)
+}
+
+// warnIfNoProvisionedNodes warns that a kubeconfig just downloaded for an
+// environment with no provisioned nodes probably belongs to an earlier
+// deployment: the service keeps returning the last kubeconfig it generated.
+func warnIfNoProvisionedNodes(ctx context.Context, env string, w io.Writer) {
+	info, err := sharedClient.GetInfoPlan(ctx, env)
+	if err != nil || len(info.Nodes) > 0 {
+		return
+	}
+
+	fmt.Fprintf(w, "Warning: %s has no provisioned nodes; this kubeconfig may be from an earlier deployment\n", env)
 }

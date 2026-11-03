@@ -3,6 +3,7 @@ package lib
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 )
 
@@ -25,6 +26,13 @@ func (c *Client) GetZTPKubeconfig(ctx context.Context, env, choice string) ([]by
 
 	body, err := c.postFormRaw(ctx, c.endpointURL(endpointZTPKubeconfig), data)
 	if err != nil {
+		// The service answers 500 when the requested kubeconfig does not exist,
+		// most often because the ZTP spoke was never deployed.
+		if IsHTTPStatus(err, http.StatusInternalServerError) {
+			return nil, fmt.Errorf("failed to fetch ZTP kubeconfig for %s: %w; the %s kubeconfig may not exist yet "+
+				"(check 'succulent-cli get log --env %s' to see whether the ZTP deployment finished)", env, err, choice, env)
+		}
+
 		return nil, fmt.Errorf("failed to fetch ZTP kubeconfig for %s: %w", env, err)
 	}
 
