@@ -9,7 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
 )
 
@@ -113,8 +115,17 @@ func TestConfigGroupsCommands(t *testing.T) {
 }
 
 func TestDeleteEnvironmentGroupContinuesAfterFailure(t *testing.T) {
+	previousDryRun := dryRunDelete
+	t.Cleanup(func() { dryRunDelete = previousDryRun })
+	dryRunDelete = false
 	t.Setenv("HOME", t.TempDir())
 	writeGroupsFile(t, "groups:\n  staging:\n    - env-one\n    - env-two\n")
+	cache := lib.NewCache(configDir(), time.Minute)
+	cache.SetMultipleInfo(map[string]*lib.ClusterInfo{
+		"env-one":   {Environment: "env-one"},
+		"env-two":   {Environment: "env-two"},
+		"unrelated": {Environment: "unrelated"},
+	})
 
 	requested := make([]string, 0, 2)
 	cleanup := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
@@ -131,13 +142,21 @@ func TestDeleteEnvironmentGroupContinuesAfterFailure(t *testing.T) {
 	defer cleanup()
 	defer func() { selectedEnvironments = nil }()
 
-	rootCmd.SetArgs([]string{"delete", "staging", "--confirm"})
+	rootCmd.SetArgs([]string{"delete", "staging", "--confirm", "--dry-run=false"})
 	err := rootCmd.Execute()
 	if err == nil || !strings.Contains(err.Error(), "1 of 2 environment operations failed") {
 		t.Fatalf("Execute() error = %v, want aggregate failure", err)
 	}
 	if got, want := strings.Join(requested, ","), "env-one,env-two"; got != want {
 		t.Fatalf("delete requests = %q, want %q", got, want)
+	}
+	if _, ok := cache.GetInfo("env-one"); ok {
+		t.Fatal("successful batch target env-one still has a cache hit")
+	}
+	for _, environment := range []string{"env-two", "unrelated"} {
+		if _, ok := cache.GetInfo(environment); !ok {
+			t.Errorf("cache entry for %s was invalidated, want it preserved", environment)
+		}
 	}
 	entries, err := sharedAuditLog.ReadLast(2)
 	if err != nil {

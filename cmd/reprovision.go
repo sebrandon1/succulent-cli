@@ -93,7 +93,9 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 			if err := runAuditedOperationForEnvironment(target, "reprovision", auditParameters(
 				"owner", owner, "ocp_tag", tag, "release_type", reprovVersion,
 			), func() error {
-				return client.Reprovision(cmd.Context(), target, &req)
+				return runAndInvalidateInfoCache(target, func() error {
+					return client.Reprovision(cmd.Context(), target, &req)
+				})
 			}); err != nil {
 				return "", fmt.Errorf("submitting reprovision request: %w; verify env exists with: succulent-cli list", err)
 			}

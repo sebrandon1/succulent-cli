@@ -93,7 +93,9 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 				"owner", owner, "sno_tag", hsSNOTag, "sno_full_tag", hsSNOFullTag,
 				"hcp_tag", hsHCPTag, "hcp_full_tag", hsHCPFullTag,
 			), func() error {
-				return sharedClient.ProvisionHypershift(cmd.Context(), target, &req)
+				return runAndInvalidateInfoCache(target, func() error {
+					return sharedClient.ProvisionHypershift(cmd.Context(), target, &req)
+				})
 			}); err != nil {
 				return "", fmt.Errorf("submitting Hypershift provision request: %w; verify env exists with: succulent-cli list", err)
 			}
