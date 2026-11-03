@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
 )
 
@@ -25,6 +27,10 @@ var logCmd = &cobra.Command{
 			err = sharedClient.FollowLog(cmd.Context(), envName, os.Stdout, logFollowPollInterval)
 		} else {
 			err = sharedClient.StreamLog(cmd.Context(), envName, os.Stdout)
+		}
+		if errors.Is(err, lib.ErrLogStillStreaming) {
+			fmt.Fprintln(os.Stderr, "\nNote: the playbook is still running; showing the output so far (use --follow to keep streaming)")
+			return nil
 		}
 		if err != nil {
 			return fmt.Errorf("fetching log: %w", err)

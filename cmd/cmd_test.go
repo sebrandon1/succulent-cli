@@ -138,6 +138,24 @@ func TestLogCommandFollow(t *testing.T) {
 	}
 }
 
+func TestLogCommandStillStreamingIsNotAnError(t *testing.T) {
+	cleanup := setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("PLAY [all] ***\n"))
+		w.(http.Flusher).Flush()
+		<-r.Context().Done() // a running playbook keeps the log response open
+	})
+	defer cleanup()
+	t.Cleanup(func() {
+		followLog = false
+		_ = rootCmd.PersistentFlags().Set("timeout", "60")
+	})
+
+	rootCmd.SetArgs([]string{"get", "log", "--env", "testenv", "--follow=false", "--timeout", "1"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("a log that is still streaming should not be an error, got %v", err)
+	}
+}
+
 func TestDeleteCommand(t *testing.T) {
 	cleanup := setupTestServer(okHandler)
 	defer cleanup()

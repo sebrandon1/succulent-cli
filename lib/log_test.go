@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -189,4 +190,146 @@ type failingLogWriter struct {
 
 func (w failingLogWriter) Write([]byte) (int, error) {
 	return 0, w.err
+}
+
+// writeAndFlush sends a chunk of a streamed log response immediately.
+func writeAndFlush(t *testing.T, w http.ResponseWriter, chunk string) {
+	t.Helper()
+	_, _ = io.WriteString(w, chunk)
+	w.(http.Flusher).Flush()
+}
+
+func TestFollowLogStreamsPastClientTimeout(t *testing.T) {
+	chunks := []string{"PLAY [all] ***\n", "TASK [slow] ***\n", "\nPLAY RECAP ***\nhost : ok=1 failed=0\n"}
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		for i, chunk := range chunks {
+			if i > 0 {
+				time.Sleep(150 * time.Millisecond)
+			}
+			writeAndFlush(t, w, chunk)
+		}
+	}))
+	defer server.Close()
+
+	// A request timeout shorter than the gaps between chunks must not cut the
+	// live stream short.
+	client := newTestClient(server.URL).WithTimeout(50 * time.Millisecond)
+	var buf bytes.Buffer
+	if err := client.FollowLog(context.Background(), testEnv, &buf, time.Millisecond); err != nil {
+		t.Fatalf("FollowLog failed: %v", err)
+	}
+
+	if got, want := buf.String(), strings.Join(chunks, ""); got != want {
+		t.Errorf("output = %q, want %q", got, want)
+	}
+	if got := requests.Load(); got != 1 {
+		t.Errorf("requests = %d, want 1 (one long-lived stream)", got)
+	}
+}
+
+func TestFollowLogReconnectsWithoutDuplicateOutput(t *testing.T) {
+	const first = "PLAY [all] ***\nTASK [one] ***\n"
+	const full = first + "TASK [two] ***\n\nPLAY RECAP ***\nhost : ok=2 failed=0\n"
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if requests.Add(1) == 1 {
+			writeAndFlush(t, w, first)
+			panic(http.ErrAbortHandler) // drop the connection mid-stream
+		}
+		_, _ = io.WriteString(w, full)
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	var buf bytes.Buffer
+	if err := client.FollowLog(context.Background(), testEnv, &buf, time.Millisecond); err != nil {
+		t.Fatalf("FollowLog failed: %v", err)
+	}
+
+	if got := buf.String(); got != full {
+		t.Errorf("output = %q, want each line once: %q", got, full)
+	}
+	if got := requests.Load(); got != 2 {
+		t.Errorf("requests = %d, want 2", got)
+	}
+}
+
+func TestFollowLogGivesUpAfterConsecutiveFailures(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if requests.Add(1) == 1 {
+			writeAndFlush(t, w, "PLAY [all] ***\n")
+		}
+		panic(http.ErrAbortHandler)
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	err := client.FollowLog(context.Background(), testEnv, io.Discard, time.Millisecond)
+	if err == nil || !strings.Contains(err.Error(), "consecutive log stream failures") {
+		t.Fatalf("expected a give-up error, got %v", err)
+	}
+}
+
+func TestFollowLogFailsFastOnFirstRequestError(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+	if err := client.FollowLog(context.Background(), testEnv, io.Discard, time.Millisecond); err == nil {
+		t.Fatal("expected an error for a 404 on the first request")
+	}
+	if got := requests.Load(); got != 1 {
+		t.Errorf("requests = %d, want 1 (no reconnects before any output)", got)
+	}
+}
+
+func TestStreamLogStillStreaming(t *testing.T) {
+	tests := []struct {
+		name         string
+		partial      string
+		wantSentinel bool
+	}{
+		{name: "timeout after partial output", partial: "PLAY [all] ***\n", wantSentinel: true},
+		{name: "timeout before any output", partial: "", wantSentinel: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if tt.partial != "" {
+					writeAndFlush(t, w, tt.partial)
+				}
+				<-r.Context().Done() // keep the response open like a running playbook
+			}))
+			defer server.Close()
+
+			client := newTestClient(server.URL).WithTimeout(100 * time.Millisecond)
+			var buf bytes.Buffer
+			err := client.StreamLog(context.Background(), testEnv, &buf)
+
+			if got := errors.Is(err, ErrLogStillStreaming); got != tt.wantSentinel {
+				t.Fatalf("errors.Is(err, ErrLogStillStreaming) = %v, want %v (err: %v)", got, tt.wantSentinel, err)
+			}
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+			if got := buf.String(); got != tt.partial {
+				t.Errorf("output = %q, want %q", got, tt.partial)
+			}
+		})
+	}
+}
+
+func TestTransientLogErrorMessage(t *testing.T) {
+	inner := errors.New("connection reset")
+	if got := (&transientLogError{err: inner}).Error(); got != inner.Error() {
+		t.Errorf("Error() = %q, want %q", got, inner.Error())
+	}
 }
