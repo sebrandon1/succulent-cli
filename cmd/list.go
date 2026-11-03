@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strings"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var (
@@ -77,7 +79,7 @@ func listDetailed(ctx context.Context) error {
 		cache = sharedCache
 	}
 
-	details, err := sharedClient.ListEnvironmentsWithInfo(ctx, listConcurrency, cache, os.Stderr)
+	details, err := sharedClient.ListEnvironmentsWithInfo(ctx, listConcurrency, cache, listProgressWriter())
 	if err != nil {
 		return fmt.Errorf("listing environments: %w", err)
 	}
@@ -180,4 +182,15 @@ func init() {
 	listCmd.Flags().StringVar(&listFilter, "filter", "", "Filter by single field: key=value (valid keys: name, status, group, owner; use --output json | jq for complex queries)")
 
 	rootCmd.AddCommand(listCmd)
+}
+
+// listProgressWriter returns where the per-environment progress line goes.
+// The line is redrawn with carriage returns, so it is only useful on an
+// interactive terminal; piped or captured output gets nothing.
+func listProgressWriter() io.Writer {
+	if viper.GetBool("quiet") || !stderrIsTTY() {
+		return io.Discard
+	}
+
+	return os.Stderr
 }

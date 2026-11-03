@@ -18,10 +18,15 @@ const (
 var (
 	noColor     bool
 	stdoutIsTTY = stdoutIsTerminal
+	stderrIsTTY = stderrIsTerminal
 )
 
-func stdoutIsTerminal() bool {
-	fi, err := os.Stdout.Stat()
+func stdoutIsTerminal() bool { return isTerminal(os.Stdout) }
+
+func stderrIsTerminal() bool { return isTerminal(os.Stderr) }
+
+func isTerminal(f *os.File) bool {
+	fi, err := f.Stat()
 	if err != nil {
 		return false
 	}
