@@ -1,11 +1,15 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
 
+	"github.com/sebrandon1/succulent-cli/lib"
 	"github.com/spf13/cobra"
 )
 
@@ -78,5 +82,48 @@ func TestZTPProvisionCommandIPv6(t *testing.T) {
 		if got := form.Get(field); got != want {
 			t.Errorf("%s = %q, want %q", field, got, want)
 		}
+	}
+}
+
+func TestWarnIfNoProvisionedNodes(t *testing.T) {
+	const emptyInfoHTML = `<html><body><table>
+<tr><th>Plan name</th><th>Client</th><th>Creation Date</th></tr>
+<tr><td>testenv</td><td>client1</td><td>2026-05-27</td></tr>
+</table></body></html>`
+
+	tests := []struct {
+		name     string
+		status   int
+		body     string
+		wantWarn bool
+	}{
+		{name: "no provisioned nodes warns", status: http.StatusOK, body: emptyInfoHTML, wantWarn: true},
+		{name: "provisioned nodes stay quiet", status: http.StatusOK, body: testInfoHTML},
+		{name: "info lookup failure stays quiet", status: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer server.Close()
+
+			client, err := lib.NewClient(server.URL, true, "")
+			if err != nil {
+				t.Fatal(err)
+			}
+			origClient := sharedClient
+			sharedClient = client
+			t.Cleanup(func() { sharedClient = origClient })
+
+			var out bytes.Buffer
+			warnIfNoProvisionedNodes(context.Background(), "testenv", &out)
+
+			if got := strings.Contains(out.String(), "may be from an earlier deployment"); got != tt.wantWarn {
+				t.Errorf("warning printed = %v, want %v; output: %q", got, tt.wantWarn, out.String())
+			}
+		})
 	}
 }

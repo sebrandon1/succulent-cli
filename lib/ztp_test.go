@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -270,5 +271,38 @@ func TestZTPRequestFormValuesSendsEmptyTextInputs(t *testing.T) {
 		if !data.Has(field) {
 			t.Errorf("%s should be sent even when empty", field)
 		}
+	}
+}
+
+func TestGetZTPKubeconfigErrorHints(t *testing.T) {
+	tests := []struct {
+		name     string
+		status   int
+		wantHint bool
+	}{
+		{name: "500 suggests the kubeconfig may not exist", status: http.StatusInternalServerError, wantHint: true},
+		{name: "404 keeps the plain error", status: http.StatusNotFound, wantHint: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(tt.status)
+			}))
+			defer server.Close()
+
+			_, err := newTestClient(server.URL).GetZTPKubeconfig(context.Background(), testEnv, "spoke")
+			if err == nil {
+				t.Fatal("expected an error")
+			}
+			if !IsHTTPStatus(err, tt.status) {
+				t.Errorf("error does not wrap HTTP status %d: %v", tt.status, err)
+			}
+
+			hint := "the spoke kubeconfig may not exist yet (check 'succulent-cli get log --env " + testEnv + "'"
+			if got := strings.Contains(err.Error(), hint); got != tt.wantHint {
+				t.Errorf("hint present = %v, want %v; error: %v", got, tt.wantHint, err)
+			}
+		})
 	}
 }
