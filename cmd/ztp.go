@@ -112,6 +112,12 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 				printDryRun("provision ZTP on", target, req.FormValues())
 				return fmt.Sprintf("[dry-run] Would provision ZTP on %s", target), nil
 			}
+			// Snapshot the current log so --watch can tell the new run apart from
+			// the previous one. Best effort: with no baseline, any log counts.
+			var baseline []byte
+			if watchAfterProvision {
+				baseline, _ = sharedClient.LogPrefix(cmd.Context(), target)
+			}
 			if err := runAuditedOperationForEnvironment(target, "ztp provision", auditParameters(
 				"owner", owner, "type", ztpType, "sno_tag", ztpSNOTag, "sno_full_tag", ztpSNOFullTag,
 				"spoke_tag", ztpSpokeTag, "spoke_full_tag", ztpSpokeFullTag,
@@ -122,7 +128,7 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 				return "", fmt.Errorf("submitting ZTP provision request: %w; verify env exists with: succulent-cli list", err)
 			}
 			message := fmt.Sprintf("ZTP provision request submitted for %s (type: %s)", target, ztpType)
-			return waitForProvisioning(cmd, target, "ZTP provision", message)
+			return waitForZTPProvisioning(cmd, target, message, baseline)
 		}, func(target, message string) error {
 			return printResult(CommandResult{Status: provisionResultStatus(), Environment: target, Message: message}, outputFormat)
 		}, dryRunZTP)

@@ -113,6 +113,23 @@ during the final 10 minutes. Set `--poll-interval` to at least 5 for a fixed
 interval. `--control-plane-only` considers the cluster ready when the installer
 and masters are up. `--watch` cannot be combined with `--dry-run`.
 
+For `ztp provision`, node status alone can't show progress: reprovisioning
+reuses nodes that are already up, and a failed playbook leaves them up. With
+`--watch`, ZTP provisioning instead:
+
+1. Records the start of the environment's current Ansible log before
+   submitting.
+2. Waits for a new run to start, then follows its log to `PLAY RECAP`,
+   printing each `PLAY` and `TASK` header to stderr.
+3. Fails if any host reports `failed` or `unreachable` tasks, and shows the last
+   failing task and its message.
+4. Confirms the nodes are ready and reports the installer IP.
+
+`--max-wait` covers the whole sequence, so allow for a full ZTP run (often
+2–3 hours), for example `--max-wait 240`. `--poll-interval` sets how often to
+check for the new run (default 15 seconds). The other provision commands keep
+the node-status check.
+
 ## health
 
 ```bash
