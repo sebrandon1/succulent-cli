@@ -17,9 +17,9 @@ const logFollowPollInterval = 2 * time.Second
 var logCmd = &cobra.Command{
 	Use:   "log",
 	Short: "Get Ansible playbook log output for an environment",
-	Long:  `Fetch the ZTP provisioning log (raw Ansible output) for the specified environment and stream it to stdout. Use --follow to print new output until the playbook finishes or the command is canceled.`,
+	Long:  `Fetch the ZTP provisioning log (raw Ansible output) for the specified environment and print it to stdout. While a playbook runs, plain get log prints the output received before --timeout and exits; use --follow to stream until the playbook finishes or the command is canceled.`,
 	Example: `  succulent-cli get log --env myenv
-	  succulent-cli get log --env myenv --follow
+  succulent-cli get log --env myenv --follow
   succulent-cli get log --env myenv | tail -50`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		var err error
@@ -41,5 +41,5 @@ var logCmd = &cobra.Command{
 }
 
 func init() {
-	logCmd.Flags().BoolVar(&followLog, "follow", false, "Poll for new output until the Ansible playbook finishes")
+	logCmd.Flags().BoolVar(&followLog, "follow", false, "Stream new output until the Ansible playbook finishes")
 }
