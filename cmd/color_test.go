@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -120,6 +121,36 @@ func TestColorEnabled(t *testing.T) {
 
 func TestStdoutIsTerminal(t *testing.T) {
 	_ = stdoutIsTerminal()
+	_ = stderrIsTerminal()
+}
+
+func TestIsTerminal(t *testing.T) {
+	regular, err := os.CreateTemp(t.TempDir(), "not-a-tty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer regular.Close()
+	if isTerminal(regular) {
+		t.Error("regular file reported as a terminal")
+	}
+
+	devNull, err := os.Open(os.DevNull)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer devNull.Close()
+	if !isTerminal(devNull) {
+		t.Errorf("%s is a character device and should report as a terminal", os.DevNull)
+	}
+
+	closed, err := os.CreateTemp(t.TempDir(), "closed")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = closed.Close()
+	if isTerminal(closed) {
+		t.Error("file that cannot be stat'ed reported as a terminal")
+	}
 }
 
 func TestColorizeEmptyCode(t *testing.T) {
