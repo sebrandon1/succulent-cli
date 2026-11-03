@@ -78,9 +78,25 @@ succulent-cli get info --env myenv --no-cache
 
 ```bash
 succulent-cli get log --env myenv
+succulent-cli get log --env myenv --follow
+succulent-cli get log --env myenv | tail -50
 ```
 
-No command-specific flags. Streams Ansible log text to stdout.
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--follow` | `false` | Stream new output until the playbook prints `PLAY RECAP`, or until you cancel |
+
+Prints the environment's Ansible playbook log to stdout.
+
+While a playbook is running, the service keeps the log open and streams output
+as Ansible writes it:
+
+- `--follow` stays connected for the whole run; `--timeout` doesn't apply. If
+  the connection drops, it reconnects without repeating output, and gives up
+  after 5 consecutive failures with no new output. If the first request fails,
+  for example because of a wrong `--env`, it exits right away.
+- Without `--follow`, the command prints what has arrived when `--timeout` runs
+  out, then a note that the playbook is still running, and exits 0.
 
 ## watch
 
