@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestSNOProvisionWatchWaitsUntilReady(t *testing.T) {
@@ -151,5 +152,114 @@ func captureCommandStdout(t *testing.T) func() string {
 			t.Fatal(err)
 		}
 		return string(data)
+	}
+}
+
+const (
+	ztpOldRunLog = "\nPLAY [localhost] ***\nMonday 02 November 2026  09:00:00 -0500\nTASK [old] ***\n\nPLAY RECAP ***\nhub : ok=1 unreachable=0 failed=0\n"
+	ztpNewHeader = "\nPLAY [localhost] ***\nTuesday 03 November 2026  10:04:04 -0500\n"
+)
+
+// ztpWatchServer serves the previous run's log until the provision request
+// arrives, then newLog, plus a ready info plan.
+func ztpWatchServer(t *testing.T, newLog string) (cleanup func()) {
+	t.Helper()
+	submitted := false
+	return setupTestServer(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/create_ztp":
+			submitted = true
+			w.WriteHeader(http.StatusOK)
+		case "/ztp_log/testenv":
+			if submitted {
+				_, _ = io.WriteString(w, newLog)
+			} else {
+				_, _ = io.WriteString(w, ztpOldRunLog)
+			}
+		case "/infoplan/testenv":
+			_, _ = fmt.Fprint(w, testInfoHTML)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+func runZTPProvisionWatch(t *testing.T) error {
+	t.Helper()
+	previousWatch, previousWait, previousPoll := watchAfterProvision, provisionWaitMinutes, provisionPollIntervalSecs
+	t.Cleanup(func() {
+		watchAfterProvision, provisionWaitMinutes, provisionPollIntervalSecs = previousWatch, previousWait, previousPoll
+	})
+
+	rootCmd.SetArgs([]string{
+		"ztp", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com",
+		"--sno-tag", "4.22", "--spoke-tag", "4.22", "--confirm", "--watch", "--max-wait", "1", "--poll-interval", "5", "--output", "json",
+	})
+	return rootCmd.Execute()
+}
+
+func TestZTPProvisionWatchWaitsForPlaybook(t *testing.T) {
+	cleanup := ztpWatchServer(t, ztpNewHeader+"TASK [deploy] ***\nok: [hub]\n\nPLAY RECAP ***\nhub : ok=5 unreachable=0 failed=0\n")
+	defer cleanup()
+
+	stdout := captureCommandStdout(t)
+	if err := runZTPProvisionWatch(t); err != nil {
+		t.Fatalf("Execute() error = %v", err)
+	}
+
+	var result CommandResult
+	if err := json.Unmarshal([]byte(stdout()), &result); err != nil {
+		t.Fatalf("output is not valid result JSON: %v", err)
+	}
+	if result.Status != "ready" || !strings.Contains(result.Message, "playbook finished; cluster ready") {
+		t.Fatalf("unexpected result: %+v", result)
+	}
+}
+
+func TestZTPProvisionWatchReportsFailedPlaybook(t *testing.T) {
+	cleanup := ztpWatchServer(t, ztpNewHeader+"TASK [lvms_operator_install : Fail if no recommended version found] ***\n"+
+		"fatal: [hub]: FAILED! => {}\n\nMSG:\n\nNo recommended version of LVMS found for the current version.\n\n"+
+		"PLAY RECAP ***\nhub : ok=77 unreachable=0 failed=1\n")
+	defer cleanup()
+
+	err := runZTPProvisionWatch(t)
+	if err == nil {
+		t.Fatal("expected an error for a failed playbook, even though the nodes are up")
+	}
+	for _, want := range []string{"the playbook did not succeed", "playbook failed on hub", "No recommended version of LVMS"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("error %q does not contain %q", err, want)
+		}
+	}
+}
+
+func TestTaskProgressWriter(t *testing.T) {
+	var out strings.Builder
+	progress := &taskProgressWriter{w: &out}
+
+	// Lines split across writes are reassembled; only headers are printed.
+	for _, chunk := range []string{"\nPLAY [localhost] ****\nMonday 02 Nov", "ember\nTASK [deploy hub] ***\nok: [hub]\r\n", "\nPLAY RECAP ***\nhub : ok=1\n"} {
+		if n, err := progress.Write([]byte(chunk)); err != nil || n != len(chunk) {
+			t.Fatalf("Write(%q) = %d, %v", chunk, n, err)
+		}
+	}
+
+	want := "  PLAY [localhost]\n  TASK [deploy hub]\n  PLAY RECAP\n"
+	if got := out.String(); got != want {
+		t.Errorf("progress = %q, want %q", got, want)
+	}
+}
+
+func TestPlaybookPollInterval(t *testing.T) {
+	previous := provisionPollIntervalSecs
+	t.Cleanup(func() { provisionPollIntervalSecs = previous })
+
+	provisionPollIntervalSecs = 0
+	if got := playbookPollInterval(); got != defaultPlaybookPollInterval {
+		t.Errorf("adaptive polling: got %v, want %v", got, defaultPlaybookPollInterval)
+	}
+	provisionPollIntervalSecs = 7
+	if got := playbookPollInterval(); got != 7*time.Second {
+		t.Errorf("fixed polling: got %v, want 7s", got)
 	}
 }
