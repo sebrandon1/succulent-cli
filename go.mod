@@ -1,6 +1,8 @@
 module github.com/sebrandon1/succulent-cli
 
-go 1.27.3
+go 1.27.0
+
+toolchain go1.27.3
 
 require (
 	github.com/sebrandon1/go-toolbox v0.1.1
