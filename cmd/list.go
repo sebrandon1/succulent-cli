@@ -74,6 +74,10 @@ func listBasic(ctx context.Context) error {
 }
 
 func listDetailed(ctx context.Context) error {
+	if listConcurrency < 1 {
+		return fmt.Errorf("--concurrency must be at least 1, got %d", listConcurrency)
+	}
+
 	var cache *lib.Cache
 	if !listNoCache && sharedCache != nil {
 		cache = sharedCache
