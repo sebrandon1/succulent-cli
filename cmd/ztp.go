@@ -57,7 +57,7 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --vm-masters 3 --confirm
   succulent-cli ztp provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --spoke-tag 4.17 --type mno --ipv6 --spoke-ipv dual --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if !confirmZTP {
+		if !dryRunZTP && !confirmZTP {
 			return fmt.Errorf("--confirm is required to provision a ZTP cluster (use --dry-run to preview)")
 		}
 		if err := validateProvisionWatchFlags(dryRunZTP); err != nil {

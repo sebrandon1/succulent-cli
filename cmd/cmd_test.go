@@ -575,3 +575,113 @@ func TestDeleteCommandJSON(t *testing.T) {
 		t.Fatalf("Expected no error with --output json, got %v", err)
 	}
 }
+
+// provisionDryRunServer counts non-/version requests, so a dry-run test can
+// prove that no provisioning request was submitted.
+func provisionDryRunServer(t *testing.T) (*int, func()) {
+	t.Helper()
+
+	requests := 0
+	cleanup := setupTestServer(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		w.WriteHeader(http.StatusOK)
+	})
+
+	return &requests, cleanup
+}
+
+func TestReprovisionDryRunWithoutConfirm(t *testing.T) {
+	requests, cleanup := provisionDryRunServer(t)
+	defer cleanup()
+
+	t.Cleanup(func() {
+		dryRunReprovision = false
+		_ = reprovisionCmd.Flags().Set("dry-run", "false")
+	})
+
+	stdout := captureCommandStdout(t)
+	rootCmd.SetArgs([]string{"reprovision", "--env", "testenv", "--email", "test@example.com", "--owner", "testuser", "--ocp-tag", "4.17", "--dry-run"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dry run should not require --confirm, got %v", err)
+	}
+
+	if out := stdout(); !strings.Contains(out, "[dry-run] Would reprovision") {
+		t.Fatalf("unexpected dry-run output: %q", out)
+	}
+	if *requests != 0 {
+		t.Fatalf("dry run submitted %d request(s), want 0", *requests)
+	}
+}
+
+func TestSNOProvisionDryRunWithoutConfirm(t *testing.T) {
+	requests, cleanup := provisionDryRunServer(t)
+	defer cleanup()
+
+	t.Cleanup(func() {
+		dryRunSNO = false
+		_ = snoProvisionCmd.Flags().Set("dry-run", "false")
+	})
+
+	stdout := captureCommandStdout(t)
+	rootCmd.SetArgs([]string{"sno", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--ocp-tag", "4.17", "--dry-run"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dry run should not require --confirm, got %v", err)
+	}
+
+	if out := stdout(); !strings.Contains(out, "[dry-run] Would provision SNO") {
+		t.Fatalf("unexpected dry-run output: %q", out)
+	}
+	if *requests != 0 {
+		t.Fatalf("dry run submitted %d request(s), want 0", *requests)
+	}
+}
+
+func TestZTPProvisionDryRunWithoutConfirm(t *testing.T) {
+	requests, cleanup := provisionDryRunServer(t)
+	defer cleanup()
+
+	t.Cleanup(func() {
+		dryRunZTP = false
+		_ = ztpProvisionCmd.Flags().Set("dry-run", "false")
+	})
+
+	stdout := captureCommandStdout(t)
+	rootCmd.SetArgs([]string{"ztp", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--spoke-tag", "4.17", "--dry-run"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dry run should not require --confirm, got %v", err)
+	}
+
+	if out := stdout(); !strings.Contains(out, "[dry-run] Would provision ZTP") {
+		t.Fatalf("unexpected dry-run output: %q", out)
+	}
+	if *requests != 0 {
+		t.Fatalf("dry run submitted %d request(s), want 0", *requests)
+	}
+}
+
+func TestHypershiftProvisionDryRunWithoutConfirm(t *testing.T) {
+	requests, cleanup := provisionDryRunServer(t)
+	defer cleanup()
+
+	t.Cleanup(func() {
+		dryRunHS = false
+		_ = hsProvisionCmd.Flags().Set("dry-run", "false")
+	})
+
+	stdout := captureCommandStdout(t)
+	rootCmd.SetArgs([]string{"hypershift", "provision", "--env", "testenv", "--owner", "testuser", "--email", "test@example.com", "--sno-tag", "4.17", "--hcp-tag", "4.17", "--dry-run"})
+
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("dry run should not require --confirm, got %v", err)
+	}
+
+	if out := stdout(); !strings.Contains(out, "[dry-run] Would provision Hypershift") {
+		t.Fatalf("unexpected dry-run output: %q", out)
+	}
+	if *requests != 0 {
+		t.Fatalf("dry run submitted %d request(s), want 0", *requests)
+	}
+}

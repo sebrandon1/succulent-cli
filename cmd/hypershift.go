@@ -46,7 +46,7 @@ When stdin is a TTY, missing --owner and --email are prompted instead of failing
 	Example: `  succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.17 --hcp-tag 4.17 --confirm
   succulent-cli hypershift provision --env myenv --owner myuser --email user@example.com --sno-tag 4.16 --hcp-full-tag 4.15.0-rc.1 --vm-workers 2 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if !confirmHS {
+		if !dryRunHS && !confirmHS {
 			return fmt.Errorf("--confirm is required to provision a Hypershift cluster (use --dry-run to preview)")
 		}
 		if err := validateProvisionWatchFlags(dryRunHS); err != nil {
