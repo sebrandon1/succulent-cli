@@ -236,12 +236,6 @@ var cacheShowCmd = &cobra.Command{
 			return fmt.Errorf("reading cache file: %w", err)
 		}
 
-		output := viper.GetString("output")
-		if output == "json" {
-			fmt.Println(string(data))
-			return nil
-		}
-
 		var cache struct {
 			Environments map[string]struct {
 				Info struct {
@@ -256,6 +250,11 @@ var cacheShowCmd = &cobra.Command{
 
 		if err := json.Unmarshal(data, &cache); err != nil {
 			return fmt.Errorf("parsing cache file: %w", err)
+		}
+
+		if outputFormat == "json" {
+			fmt.Println(string(data))
+			return nil
 		}
 
 		if len(cache.Environments) == 0 {

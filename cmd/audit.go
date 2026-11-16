@@ -116,6 +116,10 @@ var configHistoryCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("reading audit history: %w", err)
 		}
+		if outputFormat == "json" {
+			return printJSON(entries)
+		}
+
 		if len(entries) == 0 {
 			fmt.Println("No audit history found")
 			return nil

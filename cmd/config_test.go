@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/spf13/viper"
 )
 
 func setupTestConfigDir(t *testing.T) func() {
@@ -226,9 +224,9 @@ func TestCacheShowCommandJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	origOutput := viper.GetString("output")
-	viper.Set("output", "json")
-	defer viper.Set("output", origOutput)
+	origOutput := outputFormat
+	outputFormat = "json"
+	t.Cleanup(func() { outputFormat = origOutput })
 
 	if err := cacheShowCmd.RunE(nil, nil); err != nil {
 		t.Fatalf("cacheShowCmd with JSON output failed: %v", err)

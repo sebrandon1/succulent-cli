@@ -351,3 +351,10 @@ func TestMissingEnvStillPrintsUsage(t *testing.T) {
 		t.Errorf("missing --env should print usage, got:\n%s", out)
 	}
 }
+
+func TestRejectsUnknownOutputFormat(t *testing.T) {
+	_, err := executeCapturingOutput(t, "list", "--output", "yaml")
+	if err == nil || !strings.Contains(err.Error(), `invalid --output "yaml": must be table or json`) {
+		t.Fatalf("expected an invalid --output error, got %v", err)
+	}
+}
