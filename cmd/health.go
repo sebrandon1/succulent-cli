@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/sebrandon1/succulent-cli/lib"
@@ -51,8 +50,7 @@ and check basic API availability without side effects.`,
 
 		client, err := lib.NewClientWithTimeout(baseURL, !verifySSL, caCert, healthCheckTimeout)
 		if err != nil {
-			fmt.Printf("❌ Failed to create client: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("failed to create client: %w", err)
 		}
 
 		client.Logger = slog.Default()
@@ -60,9 +58,7 @@ and check basic API availability without side effects.`,
 		resp, err := client.HTTPClient.Get(baseURL)
 		if err != nil {
 			elapsed := time.Since(start)
-			fmt.Printf("❌ Health check failed after %v\n", elapsed.Round(time.Millisecond))
-			fmt.Printf("Error: %v\n", err)
-			os.Exit(1)
+			return fmt.Errorf("health check failed after %v: %w", elapsed.Round(time.Millisecond), err)
 		}
 		defer func() {
 			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, lib.MaxResponseSize))
@@ -98,8 +94,7 @@ and check basic API availability without side effects.`,
 		}
 
 		if resp.StatusCode >= 400 {
-			fmt.Printf("\n⚠️  Server returned error status code: %d\n", resp.StatusCode)
-			os.Exit(1)
+			return fmt.Errorf("server returned error status code: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 		}
 
 		fmt.Println("\n✅ Health check passed")

@@ -4,6 +4,9 @@ import (
 	"crypto/tls"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -24,11 +27,28 @@ func TestHealthCommandSuccess(t *testing.T) {
 }
 
 func TestHealthCommandServerError(t *testing.T) {
-	t.Skip("Skipping test that calls os.Exit - would terminate test process")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	viper.Set("url", server.URL)
+	viper.Set("verify_ssl", false)
+
+	err := healthCmd.RunE(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "server returned error status code: 500") {
+		t.Fatalf("expected a server status error, got %v", err)
+	}
 }
 
 func TestHealthCommandUnreachable(t *testing.T) {
-	t.Skip("Skipping test that calls os.Exit - would terminate test process")
+	viper.Set("url", "http://127.0.0.1:1")
+	viper.Set("verify_ssl", false)
+
+	err := healthCmd.RunE(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "health check failed") {
+		t.Fatalf("expected a connection error, got %v", err)
+	}
 }
 
 func TestHealthCommandWithTLS(t *testing.T) {
@@ -83,11 +103,32 @@ func TestHealthCommandWithTLSVerifyEnabled(t *testing.T) {
 }
 
 func TestHealthCommandInvalidCACert(t *testing.T) {
-	t.Skip("Skipping test that calls os.Exit - would terminate test process")
+	caPath := filepath.Join(t.TempDir(), "bad.pem")
+	if err := os.WriteFile(caPath, []byte("not a certificate"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	viper.Set("url", "http://127.0.0.1:1")
+	viper.Set("verify_ssl", false)
+	viper.Set("ca_cert", caPath)
+	t.Cleanup(func() { viper.Set("ca_cert", "") })
+
+	err := healthCmd.RunE(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "failed to create client") {
+		t.Fatalf("expected a client creation error for an invalid CA cert, got %v", err)
+	}
 }
 
 func TestHealthCommandMissingCACert(t *testing.T) {
-	t.Skip("Skipping test that calls os.Exit - would terminate test process")
+	viper.Set("url", "http://127.0.0.1:1")
+	viper.Set("verify_ssl", false)
+	viper.Set("ca_cert", filepath.Join(t.TempDir(), "missing.pem"))
+	t.Cleanup(func() { viper.Set("ca_cert", "") })
+
+	err := healthCmd.RunE(nil, nil)
+	if err == nil || !strings.Contains(err.Error(), "failed to create client") {
+		t.Fatalf("expected a client creation error for a missing CA cert, got %v", err)
+	}
 }
 
 func TestTLSVersionString(t *testing.T) {
