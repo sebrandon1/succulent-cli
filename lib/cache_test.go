@@ -61,6 +61,81 @@ func TestCacheExpiry(t *testing.T) {
 	}
 }
 
+func TestCacheTTLZeroDisablesReadsAndWrites(t *testing.T) {
+	dir := t.TempDir()
+	cache := NewCache(dir, 0)
+
+	cache.SetInfo("testenv", &ClusterInfo{Environment: "testenv"})
+
+	if _, ok := cache.GetInfo("testenv"); ok {
+		t.Fatal("Expected miss with caching disabled, got hit")
+	}
+
+	cache.SetMultipleInfo(map[string]*ClusterInfo{"env1": {Environment: "env1"}})
+
+	if _, err := os.Stat(filepath.Join(dir, "cache.json")); !os.IsNotExist(err) {
+		t.Errorf("Expected no cache file with caching disabled, got err=%v", err)
+	}
+}
+
+func TestCacheNegativeTTLDisablesReadsAndWrites(t *testing.T) {
+	dir := t.TempDir()
+	cache := NewCache(dir, -time.Second)
+
+	cache.SetInfo("testenv", &ClusterInfo{Environment: "testenv"})
+
+	if _, ok := cache.GetInfo("testenv"); ok {
+		t.Fatal("Expected miss with a negative TTL, got hit")
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "cache.json")); !os.IsNotExist(err) {
+		t.Errorf("Expected no cache file with a negative TTL, got err=%v", err)
+	}
+}
+
+func TestCacheDisabledIgnoresExistingEntries(t *testing.T) {
+	dir := t.TempDir()
+
+	NewCache(dir, time.Minute).SetInfo("testenv", &ClusterInfo{Environment: "testenv"})
+
+	cachePath := filepath.Join(dir, "cache.json")
+	before, err := os.ReadFile(cachePath)
+	if err != nil {
+		t.Fatalf("reading seeded cache: %v", err)
+	}
+
+	disabled := NewCache(dir, 0)
+	if _, ok := disabled.GetInfo("testenv"); ok {
+		t.Fatal("Expected miss with caching disabled, got hit")
+	}
+
+	disabled.SetInfo("testenv", &ClusterInfo{Environment: "testenv", InstallerIP: "10.0.0.1"})
+
+	after, err := os.ReadFile(cachePath)
+	if err != nil {
+		t.Fatalf("reading cache after disabled write: %v", err)
+	}
+
+	if string(before) != string(after) {
+		t.Error("Expected the disabled cache to leave the existing cache file untouched")
+	}
+}
+
+func TestCacheInvalidateWorksWhenDisabled(t *testing.T) {
+	dir := t.TempDir()
+
+	NewCache(dir, time.Minute).SetInfo("testenv", &ClusterInfo{Environment: "testenv"})
+
+	disabled := NewCache(dir, 0)
+	if err := disabled.InvalidateInfo("testenv"); err != nil {
+		t.Fatalf("InvalidateInfo failed: %v", err)
+	}
+
+	if _, ok := NewCache(dir, time.Minute).GetInfo("testenv"); ok {
+		t.Error("Expected the entry written by an enabled cache to be removed")
+	}
+}
+
 func TestCacheSetMultiple(t *testing.T) {
 	dir := t.TempDir()
 	cache := NewCache(dir, 60*time.Second)

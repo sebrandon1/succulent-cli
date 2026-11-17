@@ -30,10 +30,13 @@ batch, include `{env}` in `--dest` so each environment writes to a separate file
 | `--ca-cert` | `SUCCULENT_CA_CERT` | — | Path to a CA certificate bundle (PEM) |
 | `--output`, `-o` | — | `table` | `json` or `table`; any other value is rejected |
 | `--timeout` | — | `60` | HTTP request timeout in seconds |
+| `--cache-ttl` | `SUCCULENT_CACHE_TTL` | `60s` | Environment info cache TTL (duration, e.g. `90s`); `0` disables caching |
 | `--verbose`, `-v` | `SUCCULENT_VERBOSE` | `false` | Debug logging to stderr (method, URL, status, duration) |
 | `--quiet` | `SUCCULENT_QUIET` | `false` | Log errors only. Cannot be combined with `--verbose` |
 | `--no-version-check` | `SUCCULENT_SKIP_VERSION_CHECK` | `false` | Skip the best-effort server API version check |
 | `--no-color` | `NO_COLOR` | `false` | Disable ANSI color in table output. Color is also off when stdout is not a TTY. |
+
+`--cache-ttl` takes a Go duration with units (`30s`, `2m`); a bare number such as `60` is rejected.
 
 ## list
 
@@ -46,7 +49,7 @@ succulent-cli list --no-detail
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--no-detail` | `false` | Skip per-environment info fetches |
-| `--no-cache` | `false` | Bypass the info cache (60s TTL) |
+| `--no-cache` | `false` | Bypass the info cache (TTL: `--cache-ttl`, default `60s`) |
 | `--concurrency` | `10` | Parallel info fetches; must be at least 1 |
 | `--sort` | `name` | `name`, `status`, `group`, or `nodes-up` |
 | `--filter` | — | `key=value` (`name`, `status`, `group`, `owner`). Status is `active`, `partial`, or `empty`. |

@@ -37,8 +37,11 @@ Viper reads `SUCCULENT_` plus the uppercase config key. These are the variables 
 | `SUCCULENT_VERBOSE` | `verbose` | `--verbose`, `-v` | `false` | Debug logging to stderr |
 | `SUCCULENT_QUIET` | `quiet` | `--quiet` | `false` | Log errors only |
 | `SUCCULENT_SKIP_VERSION_CHECK` | `skip_version_check` | `--no-version-check` | `false` | Skip the best-effort server API version check |
+| `SUCCULENT_CACHE_TTL` | `cache_ttl` | `--cache-ttl` | `60s` | Environment info cache TTL; `0` disables caching |
 
 `--output` and `--timeout` are flags only; they have no environment variables. `--verbose` and `--quiet` are flags/env only; they are not stored by `config set`. They cannot be set together.
+
+`cache_ttl` accepts a Go duration (`30s`, `2m`, `1h`); bare numbers such as `60` are rejected. A TTL of `0` disables cache reads and writes entirely, which is useful for CI; negative TTLs are rejected. `list --no-cache` and `get info --no-cache` bypass the cache for a single run regardless of the TTL.
 
 The version check uses the server's `/version` JSON endpoint when available. Endpoint failures are ignored so they do not prevent commands from running.
 
@@ -46,7 +49,7 @@ The version check uses the server's `/version` JSON endpoint when available. End
 
 Mutating operations and kubeconfig downloads are appended to `~/.config/succulent-cli/audit.log` as JSON Lines. The file is created with mode `0600`. Set `SUCCULENT_AUDIT_LOG` to use a different path. `succulent-cli config history --limit 25` displays the most recent entries; email addresses and SSH passwords are not recorded. If the file ends in a partially written line, `config history` skips it with a warning instead of failing.
 
-`config set` / `config show` / `config init` cover `url`, `env`, `verify_ssl`, `strict_ssh`, `remote_user`, `remote_path`, `default_email`, and `default_owner`. Prefer `SUCCULENT_REMOTE_PASSWORD` or `--password` over storing a password in the config file.
+`config set` / `config show` / `config init` cover `url`, `env`, `verify_ssl`, `strict_ssh`, `remote_user`, `remote_path`, `default_email`, `default_owner`, and `cache_ttl`. Prefer `SUCCULENT_REMOTE_PASSWORD` or `--password` over storing a password in the config file.
 
 ## Example Config
 
@@ -61,6 +64,7 @@ remote_user: "root"
 remote_path: "/root/ocp/auth/kubeconfig"
 default_email: "user@example.com"
 default_owner: "myuser"
+cache_ttl: "60s"
 ```
 
 ## Environment Groups

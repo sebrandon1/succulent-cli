@@ -48,7 +48,7 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 | `cache.go` | TTL JSON file cache |
 | `kubeconfig.go` | `RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig` (`os/exec`); `WaitForClusterReady` polls `GetInfoPlan` |
 
-**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
+**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--cache-ttl`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
 
 ```text
 succulent-cli
@@ -70,7 +70,7 @@ succulent-cli
 - `/infoplan/{env}` returns HTML, not JSON.
 - `FetchKubeconfig` is not a `Client` method; it shells out to `scp`.
 - Config: flag > `SUCCULENT_*` env > `~/.config/succulent-cli/config.yaml` > defaults.
-- `list` caches `ClusterInfo` as JSON (60s TTL). `--output json` switches table commands to JSON; `--filter` / `--sort` apply to `list`.
+- `list` caches `ClusterInfo` as JSON (TTL from `--cache-ttl`/`cache_ttl`, default 60s; `0` disables caching). `--output json` switches table commands to JSON; `--filter` / `--sort` apply to `list`.
 - Tests use `httptest.NewServer`.
 - Version: `-ldflags "-X main.version=$(VERSION)"`.
 - Construct API URLs with `c.endpointURL(...)`, not string concat or `fmt.Sprintf` on `BaseURL`.
