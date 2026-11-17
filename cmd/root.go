@@ -25,7 +25,6 @@ var (
 	verifySSL        bool
 	caCertPath       string
 	outputFormat     string
-	httpTimeout      int
 	sharedClient     *lib.Client
 	sharedCache      *lib.Cache
 	maxWaitMinutes   int
@@ -157,7 +156,12 @@ func initSharedClient(ctx context.Context) error {
 	verifySSL = viper.GetBool("verify_ssl")
 	caCertPath = viper.GetString("ca_cert")
 
-	client, err := lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
+	opts, err := resolveClientOptions()
+	if err != nil {
+		return err
+	}
+
+	client, err := lib.NewClientWithOptions(succulentURL, !verifySSL, caCertPath, opts)
 	if err != nil {
 		return err
 	}
@@ -211,6 +215,41 @@ func resolveCacheTTL() (time.Duration, error) {
 	}
 
 	return ttl, nil
+}
+
+// resolveClientOptions resolves the overall, dial, and TLS-handshake timeouts
+// from flags, environment, and config. All three must be positive: the HTTP
+// transport replaces a zero timeout with its own default instead of disabling
+// the limit, so a zero would not mean "wait forever".
+func resolveClientOptions() (lib.ClientOptions, error) {
+	timeout := viper.GetInt("timeout")
+	if timeout <= 0 {
+		return lib.ClientOptions{}, fmt.Errorf("--timeout must be greater than 0 seconds (got %d)", timeout)
+	}
+
+	dial, err := durationSetting("dial_timeout", lib.DefaultDialTimeout)
+	if err != nil {
+		return lib.ClientOptions{}, err
+	}
+
+	if dial <= 0 {
+		return lib.ClientOptions{}, fmt.Errorf("--dial-timeout must be greater than 0 (got %s)", dial)
+	}
+
+	handshake, err := durationSetting("tls_handshake_timeout", lib.DefaultTLSHandshakeTimeout)
+	if err != nil {
+		return lib.ClientOptions{}, err
+	}
+
+	if handshake <= 0 {
+		return lib.ClientOptions{}, fmt.Errorf("--tls-handshake-timeout must be greater than 0 (got %s)", handshake)
+	}
+
+	return lib.ClientOptions{
+		Timeout:             time.Duration(timeout) * time.Second,
+		DialTimeout:         dial,
+		TLSHandshakeTimeout: handshake,
+	}, nil
 }
 
 func skipEnvRequirement(cmd *cobra.Command) bool {
@@ -267,8 +306,11 @@ func initConfig() {
 	viper.SetDefault("strict_ssh", false)
 	viper.SetDefault("default_email", "")
 	viper.SetDefault("default_owner", "")
+	viper.SetDefault("timeout", 60)
 	// Durations are stored as strings: a time.Duration default would be
 	// written to config.yaml as integer nanoseconds by `config set`.
+	viper.SetDefault("dial_timeout", lib.DefaultDialTimeout.String())
+	viper.SetDefault("tls_handshake_timeout", lib.DefaultTLSHandshakeTimeout.String())
 	viper.SetDefault("cache_ttl", defaultCacheTTL.String())
 
 	_ = viper.ReadInConfig()
@@ -287,8 +329,12 @@ func init() {
 		"Path to CA certificate bundle (PEM format)")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table",
 		"Output format (json or table)")
-	rootCmd.PersistentFlags().IntVar(&httpTimeout, "timeout", 60,
-		"HTTP request timeout in seconds")
+	rootCmd.PersistentFlags().Int("timeout", 60,
+		"HTTP request timeout in seconds (env: SUCCULENT_TIMEOUT)")
+	rootCmd.PersistentFlags().Duration("dial-timeout", lib.DefaultDialTimeout,
+		"TCP connection-establishment timeout (env: SUCCULENT_DIAL_TIMEOUT)")
+	rootCmd.PersistentFlags().Duration("tls-handshake-timeout", lib.DefaultTLSHandshakeTimeout,
+		"TLS handshake timeout (env: SUCCULENT_TLS_HANDSHAKE_TIMEOUT)")
 	rootCmd.PersistentFlags().Duration("cache-ttl", defaultCacheTTL,
 		"Environment info cache TTL (e.g. 60s); 0 disables caching (env: SUCCULENT_CACHE_TTL)")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false,
@@ -307,6 +353,9 @@ func init() {
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 	_ = viper.BindPFlag("skip_version_check", rootCmd.PersistentFlags().Lookup("no-version-check"))
+	_ = viper.BindPFlag("timeout", rootCmd.PersistentFlags().Lookup("timeout"))
+	_ = viper.BindPFlag("dial_timeout", rootCmd.PersistentFlags().Lookup("dial-timeout"))
+	_ = viper.BindPFlag("tls_handshake_timeout", rootCmd.PersistentFlags().Lookup("tls-handshake-timeout"))
 	_ = viper.BindPFlag("cache_ttl", rootCmd.PersistentFlags().Lookup("cache-ttl"))
 
 	rootCmd.AddCommand(getCmd)

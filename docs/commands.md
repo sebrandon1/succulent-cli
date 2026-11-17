@@ -29,14 +29,16 @@ batch, include `{env}` in `--dest` so each environment writes to a separate file
 | `--verify-ssl` | `SUCCULENT_VERIFY_SSL` | `false` | Enable TLS certificate verification |
 | `--ca-cert` | `SUCCULENT_CA_CERT` | — | Path to a CA certificate bundle (PEM) |
 | `--output`, `-o` | — | `table` | `json` or `table`; any other value is rejected |
-| `--timeout` | — | `60` | HTTP request timeout in seconds |
+| `--timeout` | `SUCCULENT_TIMEOUT` | `60` | Whole HTTP request timeout in seconds |
+| `--dial-timeout` | `SUCCULENT_DIAL_TIMEOUT` | `10s` | TCP connection-establishment timeout |
+| `--tls-handshake-timeout` | `SUCCULENT_TLS_HANDSHAKE_TIMEOUT` | `10s` | TLS handshake timeout |
 | `--cache-ttl` | `SUCCULENT_CACHE_TTL` | `60s` | Environment info cache TTL (duration, e.g. `90s`); `0` disables caching |
 | `--verbose`, `-v` | `SUCCULENT_VERBOSE` | `false` | Debug logging to stderr (method, URL, status, duration) |
 | `--quiet` | `SUCCULENT_QUIET` | `false` | Log errors only. Cannot be combined with `--verbose` |
 | `--no-version-check` | `SUCCULENT_SKIP_VERSION_CHECK` | `false` | Skip the best-effort server API version check |
 | `--no-color` | `NO_COLOR` | `false` | Disable ANSI color in table output. Color is also off when stdout is not a TTY. |
 
-`--cache-ttl` takes a Go duration with units (`30s`, `2m`); a bare number such as `60` is rejected.
+`--dial-timeout`, `--tls-handshake-timeout`, and `--cache-ttl` take Go durations with units (`5s`, `2m`); bare numbers such as `10` are rejected. The three timeouts must be greater than zero; `--cache-ttl 0` disables caching.
 
 ## list
 
