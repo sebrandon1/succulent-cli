@@ -2,6 +2,8 @@
 
 ## From Source
 
+Requires Go 1.27+ (the version in `go.mod`).
+
 ```bash
 git clone https://github.com/sebrandon1/succulent-cli.git
 cd succulent-cli

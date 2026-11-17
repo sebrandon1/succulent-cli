@@ -32,6 +32,8 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 
 | File | Role |
 |------|------|
+| `client.go` | `Client`, `NewClient`, `NewClientWithTimeout`; `getRaw`/`postForm` request helpers |
+| `structs.go` | Request/response types and shared constants such as `StatusUp` |
 | `info.go` | `GetInfoPlan` — HTML table parse (`golang.org/x/net/html`) |
 | `log.go` | `StreamLog` |
 | `reprovision.go` | `Reprovision` |
@@ -40,10 +42,13 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 | `list.go` | `ListEnvironments`, `ListEnvironmentsWithInfo` |
 | `hypershift.go` | `ProvisionHypershift`, `GetHypershiftKubeconfig` |
 | `ztp.go` | `ProvisionZTP`, `GetZTPKubeconfig` |
+| `playbook.go` | `LogPrefix`, `WaitForPlaybook`, `ParsePlayRecap` — follows a ZTP run's Ansible log for `--watch` |
+| `audit.go` | `AuditLog`, `ReadLast` — JSON Lines operation history (`config history`) |
+| `version.go` | `GetServerVersion`, `CheckVersionCompatibility` — best-effort server API version check |
 | `cache.go` | TTL JSON file cache |
 | `kubeconfig.go` | `RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig` (`os/exec`); `WaitForClusterReady` polls `GetInfoPlan` |
 
-**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--verbose`/`-v`, `--quiet`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
+**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
 
 ```text
 succulent-cli
@@ -54,7 +59,7 @@ succulent-cli
 ├── ztp provision | ztp kubeconfig
 ├── hypershift provision | hypershift kubeconfig
 ├── kubeconfig fetch
-├── config show | path | init | set | edit | cache
+├── config show | path | init | set | edit | groups | history | cache
 ├── completion install
 └── version
 ```
