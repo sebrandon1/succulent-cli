@@ -23,6 +23,7 @@ var validConfigKeys = []string{
 	"url", "env", "verify_ssl", "strict_ssh",
 	"remote_user", "remote_path",
 	"default_email", "default_owner",
+	"timeout", "dial_timeout", "tls_handshake_timeout",
 	"cache_ttl",
 }
 
@@ -31,9 +32,22 @@ var boolConfigKeys = map[string]bool{
 	"strict_ssh": true,
 }
 
-// durationConfigKeys are stored as strings such as "90s"; the value must parse
-// with time.ParseDuration and, for cache_ttl, must not be negative.
+// intConfigKeys are whole numbers written as strings and read back with
+// viper.GetInt.
+var intConfigKeys = map[string]bool{
+	"timeout": true,
+}
+
+// durationConfigKeys are stored as strings such as "10s" and must parse with
+// time.ParseDuration. All of them must be positive.
 var durationConfigKeys = map[string]bool{
+	"dial_timeout":          true,
+	"tls_handshake_timeout": true,
+}
+
+// nonNegativeDurationConfigKeys may be zero; cache_ttl uses 0 to disable
+// caching.
+var nonNegativeDurationConfigKeys = map[string]bool{
 	"cache_ttl": true,
 }
 
@@ -46,8 +60,16 @@ func validateConfigDurationValue(key, value string) error {
 		return fmt.Errorf("%s must be a duration with units, for example 60s or 2m", key)
 	}
 
-	if key == "cache_ttl" && d < 0 {
-		return fmt.Errorf("%s must not be negative; use 0 to disable caching", key)
+	if nonNegativeDurationConfigKeys[key] {
+		if d < 0 {
+			return fmt.Errorf("%s must not be negative; use 0 to disable caching", key)
+		}
+
+		return nil
+	}
+
+	if d <= 0 {
+		return fmt.Errorf("%s must be greater than 0", key)
 	}
 
 	return nil
@@ -70,7 +92,7 @@ var configShowCmd = &cobra.Command{
 		}
 
 		for _, key := range validConfigKeys {
-			fmt.Printf("%-16s %v\n", key+":", viper.Get(key))
+			fmt.Printf("%-22s %v\n", key+":", viper.Get(key))
 		}
 
 		fmt.Printf("\n%-16s %s\n", "cache_file:", filepath.Join(configDir(), cacheFileName))
@@ -119,7 +141,10 @@ var configInitCmd = &cobra.Command{
 # remote_path: "/root/ocp/auth/kubeconfig"
 # default_email: "user@example.com"
 # default_owner: "myuser"
-# cache_ttl: "60s"   # environment info cache TTL; "0s" disables caching
+# timeout: 60                      # whole HTTP request timeout, in seconds
+# dial_timeout: "10s"              # TCP connection-establishment timeout
+# tls_handshake_timeout: "10s"     # TLS handshake timeout
+# cache_ttl: "60s"                 # environment info cache TTL; "0s" disables caching
 `
 
 		if err := os.WriteFile(path, []byte(defaultConfig), 0o600); err != nil {
@@ -157,7 +182,13 @@ var configSetCmd = &cobra.Command{
 				key, strings.Join(validConfigKeys, ", "))
 		}
 
-		if durationConfigKeys[key] {
+		if intConfigKeys[key] {
+			if _, err := strconv.Atoi(value); err != nil {
+				return fmt.Errorf("%s must be a whole number of seconds (got %q)", key, value)
+			}
+		}
+
+		if durationConfigKeys[key] || nonNegativeDurationConfigKeys[key] {
 			if err := validateConfigDurationValue(key, value); err != nil {
 				return err
 			}

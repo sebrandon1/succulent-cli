@@ -75,21 +75,59 @@ func IsHTTPStatus(err error, code int) bool {
 	return errors.As(err, &statusErr) && statusErr.StatusCode == code
 }
 
+const (
+	// DefaultTimeout bounds a whole request, including the response body read.
+	DefaultTimeout = 60 * time.Second
+	// DefaultDialTimeout bounds establishing the TCP connection.
+	DefaultDialTimeout = 10 * time.Second
+	// DefaultTLSHandshakeTimeout bounds the TLS handshake.
+	DefaultTLSHandshakeTimeout = 10 * time.Second
+)
+
 type Client struct {
-	BaseURL          string
-	HTTPClient       *http.Client
-	userAgentVersion string
-	MaxRetries       int
-	RetryBaseDelay   time.Duration
-	Timeout          time.Duration
-	Logger           *slog.Logger
+	BaseURL             string
+	HTTPClient          *http.Client
+	userAgentVersion    string
+	MaxRetries          int
+	RetryBaseDelay      time.Duration
+	Timeout             time.Duration
+	DialTimeout         time.Duration
+	TLSHandshakeTimeout time.Duration
+	Logger              *slog.Logger
+}
+
+// ClientOptions configures the timeouts of a Client. A zero field takes the
+// package default, so callers can set only the values they care about.
+type ClientOptions struct {
+	Timeout             time.Duration
+	DialTimeout         time.Duration
+	TLSHandshakeTimeout time.Duration
 }
 
 func NewClient(baseURL string, insecureSkipVerify bool, caCertPath string) (*Client, error) {
-	return NewClientWithTimeout(baseURL, insecureSkipVerify, caCertPath, 60*time.Second)
+	return NewClientWithTimeout(baseURL, insecureSkipVerify, caCertPath, DefaultTimeout)
 }
 
 func NewClientWithTimeout(baseURL string, insecureSkipVerify bool, caCertPath string, timeout time.Duration) (*Client, error) {
+	return NewClientWithOptions(baseURL, insecureSkipVerify, caCertPath, ClientOptions{Timeout: timeout})
+}
+
+// NewClientWithOptions builds a Client with the given timeouts, filling in the
+// package defaults for any zero field. httpx substitutes its own defaults for
+// non-positive values, so normalizing here keeps the CLI's numbers visible.
+func NewClientWithOptions(baseURL string, insecureSkipVerify bool, caCertPath string, opts ClientOptions) (*Client, error) {
+	if opts.Timeout <= 0 {
+		opts.Timeout = DefaultTimeout
+	}
+
+	if opts.DialTimeout <= 0 {
+		opts.DialTimeout = DefaultDialTimeout
+	}
+
+	if opts.TLSHandshakeTimeout <= 0 {
+		opts.TLSHandshakeTimeout = DefaultTLSHandshakeTimeout
+	}
+
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: insecureSkipVerify, // #nosec G402 -- lab self-signed certs; --verify-ssl enables verification
 	}
@@ -114,19 +152,21 @@ func NewClientWithTimeout(baseURL string, insecureSkipVerify bool, caCertPath st
 	}
 
 	httpOpts := httpx.Options{
-		Timeout:             timeout,
-		DialTimeout:         10 * time.Second,
-		TLSHandshakeTimeout: 10 * time.Second,
+		Timeout:             opts.Timeout,
+		DialTimeout:         opts.DialTimeout,
+		TLSHandshakeTimeout: opts.TLSHandshakeTimeout,
 		TLSConfig:           tlsConfig,
 	}
 
 	return &Client{
-		BaseURL:          baseURL,
-		userAgentVersion: defaultCLIVersion,
-		HTTPClient:       httpx.NewHTTPClient(httpOpts),
-		MaxRetries:       3,
-		RetryBaseDelay:   1 * time.Second,
-		Timeout:          timeout,
+		BaseURL:             baseURL,
+		userAgentVersion:    defaultCLIVersion,
+		HTTPClient:          httpx.NewHTTPClient(httpOpts),
+		MaxRetries:          3,
+		RetryBaseDelay:      1 * time.Second,
+		Timeout:             opts.Timeout,
+		DialTimeout:         opts.DialTimeout,
+		TLSHandshakeTimeout: opts.TLSHandshakeTimeout,
 	}, nil
 }
 
@@ -139,13 +179,15 @@ func (c *Client) WithTimeout(timeout time.Duration) *Client {
 	}
 
 	return &Client{
-		BaseURL:          c.BaseURL,
-		HTTPClient:       newHTTPClient,
-		userAgentVersion: c.userAgentVersion,
-		MaxRetries:       c.MaxRetries,
-		RetryBaseDelay:   c.RetryBaseDelay,
-		Timeout:          timeout,
-		Logger:           c.Logger,
+		BaseURL:             c.BaseURL,
+		HTTPClient:          newHTTPClient,
+		userAgentVersion:    c.userAgentVersion,
+		MaxRetries:          c.MaxRetries,
+		RetryBaseDelay:      c.RetryBaseDelay,
+		Timeout:             timeout,
+		DialTimeout:         c.DialTimeout,
+		TLSHandshakeTimeout: c.TLSHandshakeTimeout,
+		Logger:              c.Logger,
 	}
 }
 

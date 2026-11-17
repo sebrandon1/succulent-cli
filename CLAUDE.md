@@ -28,11 +28,11 @@ go test ./lib -v
 
 Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go-quay).
 
-**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `getRaw`, `postForm`, and `postFormRaw`. Optional `Logger *slog.Logger` (nil = no logs) records method, URL, status, and duration; form bodies and secrets are never logged. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
+**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `NewClientWithOptions` (with `ClientOptions` for the overall, dial, and TLS-handshake timeouts), `getRaw`, `postForm`, and `postFormRaw`. Optional `Logger *slog.Logger` (nil = no logs) records method, URL, status, and duration; form bodies and secrets are never logged. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
 
 | File | Role |
 |------|------|
-| `client.go` | `Client`, `NewClient`, `NewClientWithTimeout`; `getRaw`/`postForm` request helpers |
+| `client.go` | `Client`, `ClientOptions`, `NewClient`, `NewClientWithTimeout`, `NewClientWithOptions`; `getRaw`/`postForm` request helpers |
 | `structs.go` | Request/response types and shared constants such as `StatusUp` |
 | `info.go` | `GetInfoPlan` — HTML table parse (`golang.org/x/net/html`) |
 | `log.go` | `StreamLog` |
@@ -48,7 +48,7 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 | `cache.go` | TTL JSON file cache |
 | `kubeconfig.go` | `RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig` (`os/exec`); `WaitForClusterReady` polls `GetInfoPlan` |
 
-**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--cache-ttl`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
+**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--dial-timeout`, `--tls-handshake-timeout`, `--cache-ttl`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
 
 ```text
 succulent-cli

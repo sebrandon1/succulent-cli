@@ -624,6 +624,116 @@ func TestWithTimeout(t *testing.T) {
 	}
 }
 
+func TestNewClientDefaultsDialAndTLS(t *testing.T) {
+	client, err := NewClient("https://example.com", true, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if client.DialTimeout != DefaultDialTimeout {
+		t.Errorf("Expected dial timeout %s, got %s", DefaultDialTimeout, client.DialTimeout)
+	}
+
+	if client.TLSHandshakeTimeout != DefaultTLSHandshakeTimeout {
+		t.Errorf("Expected TLS handshake timeout %s, got %s",
+			DefaultTLSHandshakeTimeout, client.TLSHandshakeTimeout)
+	}
+}
+
+func TestNewClientWithOptions(t *testing.T) {
+	client, err := NewClientWithOptions("https://example.com", true, "", ClientOptions{
+		Timeout:             5 * time.Second,
+		DialTimeout:         2 * time.Second,
+		TLSHandshakeTimeout: 3 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if client.Timeout != 5*time.Second {
+		t.Errorf("Expected 5s timeout, got %s", client.Timeout)
+	}
+
+	if client.HTTPClient.Timeout != 5*time.Second {
+		t.Errorf("Expected HTTPClient timeout 5s, got %s", client.HTTPClient.Timeout)
+	}
+
+	if client.DialTimeout != 2*time.Second {
+		t.Errorf("Expected 2s dial timeout, got %s", client.DialTimeout)
+	}
+
+	if client.TLSHandshakeTimeout != 3*time.Second {
+		t.Errorf("Expected 3s TLS handshake timeout, got %s", client.TLSHandshakeTimeout)
+	}
+
+	transport, ok := client.HTTPClient.Transport.(*http.Transport)
+	if !ok {
+		t.Fatalf("Expected *http.Transport, got %T", client.HTTPClient.Transport)
+	}
+
+	if transport.TLSHandshakeTimeout != 3*time.Second {
+		t.Errorf("Expected transport TLS handshake timeout 3s, got %s", transport.TLSHandshakeTimeout)
+	}
+}
+
+func TestNewClientWithOptionsDefaultsNonPositiveFields(t *testing.T) {
+	tests := []struct {
+		name string
+		opts ClientOptions
+	}{
+		{"zero", ClientOptions{}},
+		{"negative", ClientOptions{
+			Timeout:             -time.Second,
+			DialTimeout:         -time.Second,
+			TLSHandshakeTimeout: -time.Second,
+		}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client, err := NewClientWithOptions("https://example.com", true, "", tt.opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if client.Timeout != DefaultTimeout {
+				t.Errorf("Expected %s timeout, got %s", DefaultTimeout, client.Timeout)
+			}
+
+			if client.DialTimeout != DefaultDialTimeout {
+				t.Errorf("Expected %s dial timeout, got %s", DefaultDialTimeout, client.DialTimeout)
+			}
+
+			if client.TLSHandshakeTimeout != DefaultTLSHandshakeTimeout {
+				t.Errorf("Expected %s TLS handshake timeout, got %s",
+					DefaultTLSHandshakeTimeout, client.TLSHandshakeTimeout)
+			}
+		})
+	}
+}
+
+func TestWithTimeoutPreservesDialAndTLSSettings(t *testing.T) {
+	client, err := NewClientWithOptions("https://example.com", true, "", ClientOptions{
+		Timeout:             60 * time.Second,
+		DialTimeout:         2 * time.Second,
+		TLSHandshakeTimeout: 3 * time.Second,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	streaming := client.WithTimeout(0)
+
+	if streaming.HTTPClient.Transport != client.HTTPClient.Transport {
+		t.Error("Expected WithTimeout to reuse the transport")
+	}
+
+	if streaming.DialTimeout != 2*time.Second || streaming.TLSHandshakeTimeout != 3*time.Second {
+		t.Errorf("Expected dial/TLS timeouts to be preserved, got %s/%s",
+			streaming.DialTimeout, streaming.TLSHandshakeTimeout)
+	}
+}
+
 func TestPostFormRawNon2xx(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)

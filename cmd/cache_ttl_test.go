@@ -22,13 +22,22 @@ func resetFlag(t *testing.T, name string) {
 		t.Fatalf("persistent flag %q not found", name)
 	}
 
-	original := flag.DefValue
+	originalValue := flag.Value.String()
 	originalChanged := flag.Changed
 
+	// Clear the Changed bit for the duration of this test: a flag left changed
+	// by an earlier test otherwise outranks env and config in viper's lookup.
+	if err := flag.Value.Set(flag.DefValue); err != nil {
+		t.Fatalf("resetting flag %q: %v", name, err)
+	}
+
+	flag.Changed = false
+
 	t.Cleanup(func() {
-		if err := flag.Value.Set(original); err != nil {
-			t.Errorf("resetting flag %q: %v", name, err)
+		if err := flag.Value.Set(originalValue); err != nil {
+			t.Errorf("restoring flag %q: %v", name, err)
 		}
+
 		flag.Changed = originalChanged
 	})
 }
