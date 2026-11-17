@@ -54,9 +54,10 @@ kubeconfig retrieval, and environment deletion.`,
 }
 
 func persistentPreRun(cmd *cobra.Command, args []string) error {
-	if err := setupLogger(); err != nil {
+	if err := prepareRun(); err != nil {
 		return err
 	}
+
 	var err error
 	sharedAuditLog, err = lib.NewAuditLog(auditLogPath())
 	if err != nil {
@@ -117,6 +118,23 @@ func persistentPreRun(cmd *cobra.Command, args []string) error {
 func SetVersion(v string) {
 	cobrautil.SetVersion(rootCmd, v)
 	cliVersion = rootCmd.Version
+}
+
+func prepareRun() error {
+	if err := setupLogger(); err != nil {
+		return err
+	}
+
+	return validateOutputFormat()
+}
+
+func validateOutputFormat() error {
+	outputFormat = strings.ToLower(strings.TrimSpace(outputFormat))
+	if outputFormat != "table" && outputFormat != "json" {
+		return fmt.Errorf("invalid --output %q: must be table or json", outputFormat)
+	}
+
+	return nil
 }
 
 var getCmd = &cobra.Command{

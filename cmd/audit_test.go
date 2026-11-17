@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/sebrandon1/succulent-cli/lib"
@@ -124,5 +126,62 @@ func TestFormatAuditDetails(t *testing.T) {
 	}
 	if got, want := formatAuditDetails(entry), "ocp_tag=4.17; owner=alice; error=request failed check server"; got != want {
 		t.Errorf("formatAuditDetails() = %q, want %q", got, want)
+	}
+}
+
+func TestConfigHistoryCommandJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit.log")
+	log, err := lib.NewAuditLog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := log.Record(lib.AuditEntry{UserID: "alice", Operation: "delete", Environment: "lab1", Result: "success"}); err != nil {
+		t.Fatal(err)
+	}
+
+	previousLog := sharedAuditLog
+	sharedAuditLog = nil
+	defer func() { sharedAuditLog = previousLog }()
+	t.Setenv("SUCCULENT_AUDIT_LOG", path)
+
+	previousFormat := outputFormat
+	outputFormat = "json"
+	t.Cleanup(func() { outputFormat = previousFormat })
+
+	stdout := captureCommandStdout(t)
+
+	rootCmd.SetArgs([]string{"config", "history", "--limit", "1", "--output", "json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("config history --output json failed: %v", err)
+	}
+
+	var entries []lib.AuditEntry
+	if err := json.Unmarshal([]byte(stdout()), &entries); err != nil {
+		t.Fatalf("history output is not valid JSON: %v", err)
+	}
+	if len(entries) != 1 || entries[0].Operation != "delete" || entries[0].Environment != "lab1" {
+		t.Fatalf("unexpected entries: %+v", entries)
+	}
+}
+
+func TestConfigHistoryCommandJSONEmpty(t *testing.T) {
+	previousLog := sharedAuditLog
+	sharedAuditLog = nil
+	defer func() { sharedAuditLog = previousLog }()
+	t.Setenv("SUCCULENT_AUDIT_LOG", filepath.Join(t.TempDir(), "audit.log"))
+
+	previousFormat := outputFormat
+	outputFormat = "json"
+	t.Cleanup(func() { outputFormat = previousFormat })
+
+	stdout := captureCommandStdout(t)
+
+	rootCmd.SetArgs([]string{"config", "history", "--output", "json"})
+	if err := rootCmd.Execute(); err != nil {
+		t.Fatalf("config history --output json failed: %v", err)
+	}
+
+	if got := strings.TrimSpace(stdout()); got != "[]" {
+		t.Fatalf("empty history output = %q, want %q", got, "[]")
 	}
 }

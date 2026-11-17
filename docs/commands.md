@@ -28,7 +28,7 @@ batch, include `{env}` in `--dest` so each environment writes to a separate file
 | `--env` | `SUCCULENT_ENV` | — | Environment name |
 | `--verify-ssl` | `SUCCULENT_VERIFY_SSL` | `false` | Enable TLS certificate verification |
 | `--ca-cert` | `SUCCULENT_CA_CERT` | — | Path to a CA certificate bundle (PEM) |
-| `--output`, `-o` | — | `table` | `json` or `table` |
+| `--output`, `-o` | — | `table` | `json` or `table`; any other value is rejected |
 | `--timeout` | — | `60` | HTTP request timeout in seconds |
 | `--verbose`, `-v` | `SUCCULENT_VERBOSE` | `false` | Debug logging to stderr (method, URL, status, duration) |
 | `--quiet` | `SUCCULENT_QUIET` | `false` | Log errors only. Cannot be combined with `--verbose` |
@@ -314,13 +314,18 @@ succulent-cli delete --env myenv --confirm
 succulent-cli config init
 succulent-cli config show
 succulent-cli config history --limit 25
+succulent-cli config history --output json
 succulent-cli config path
 succulent-cli config set url https://succulent.example.com
 succulent-cli config edit
 succulent-cli config cache status
 succulent-cli config cache show
+succulent-cli config cache show --output json
 succulent-cli config cache clear
 ```
+
+`config history` and `config cache show` honor the global `--output` flag. JSON
+history is an array; an empty history prints `[]`.
 
 See [Configuration](configuration.md).
 
