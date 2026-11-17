@@ -419,3 +419,19 @@ func TestListEnvironmentsWithInfoRecoversWriterPanic(t *testing.T) {
 		t.Fatal("ListEnvironmentsWithInfo hung after worker panic")
 	}
 }
+
+func TestListEnvironmentsWithInfoRejectsNonPositiveConcurrency(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("unexpected request: concurrency should be validated first")
+	}))
+	defer server.Close()
+
+	client := newTestClient(server.URL)
+
+	for _, concurrency := range []int{0, -1} {
+		if _, err := client.ListEnvironmentsWithInfo(context.Background(), concurrency, nil, io.Discard); err == nil ||
+			!strings.Contains(err.Error(), "concurrency must be at least 1") {
+			t.Errorf("concurrency %d: error = %v", concurrency, err)
+		}
+	}
+}

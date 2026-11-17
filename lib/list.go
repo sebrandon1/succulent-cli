@@ -31,6 +31,10 @@ func (c *Client) ListEnvironments(ctx context.Context) ([]EnvironmentInfo, error
 }
 
 func (c *Client) ListEnvironmentsWithInfo(ctx context.Context, concurrency int, cache *Cache, w io.Writer) ([]EnvironmentDetail, error) {
+	if concurrency < 1 {
+		return nil, fmt.Errorf("concurrency must be at least 1, got %d", concurrency)
+	}
+
 	envs, err := c.ListEnvironments(ctx)
 	if err != nil {
 		return nil, err

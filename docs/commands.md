@@ -47,7 +47,7 @@ succulent-cli list --no-detail
 |------|---------|-------------|
 | `--no-detail` | `false` | Skip per-environment info fetches |
 | `--no-cache` | `false` | Bypass the info cache (60s TTL) |
-| `--concurrency` | `10` | Parallel info fetches |
+| `--concurrency` | `10` | Parallel info fetches; must be at least 1 |
 | `--sort` | `name` | `name`, `status`, `group`, or `nodes-up` |
 | `--filter` | — | `key=value` (`name`, `status`, `group`, `owner`). Status is `active`, `partial`, or `empty`. |
 
