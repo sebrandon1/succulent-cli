@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -15,18 +16,41 @@ import (
 
 const (
 	cacheFileName   = "cache.json"
-	defaultCacheTTL = "60s"
+	defaultCacheTTL = 60 * time.Second
 )
 
 var validConfigKeys = []string{
 	"url", "env", "verify_ssl", "strict_ssh",
 	"remote_user", "remote_path",
 	"default_email", "default_owner",
+	"cache_ttl",
 }
 
 var boolConfigKeys = map[string]bool{
 	"verify_ssl": true,
 	"strict_ssh": true,
+}
+
+// durationConfigKeys are stored as strings such as "90s"; the value must parse
+// with time.ParseDuration and, for cache_ttl, must not be negative.
+var durationConfigKeys = map[string]bool{
+	"cache_ttl": true,
+}
+
+// validateConfigDurationValue checks a duration-valued config key before it is
+// written, so a bad value is rejected at `config set` time instead of breaking
+// the next command.
+func validateConfigDurationValue(key, value string) error {
+	d, err := time.ParseDuration(strings.TrimSpace(value))
+	if err != nil {
+		return fmt.Errorf("%s must be a duration with units, for example 60s or 2m", key)
+	}
+
+	if key == "cache_ttl" && d < 0 {
+		return fmt.Errorf("%s must not be negative; use 0 to disable caching", key)
+	}
+
+	return nil
 }
 
 var configCmd = &cobra.Command{
@@ -50,7 +74,6 @@ var configShowCmd = &cobra.Command{
 		}
 
 		fmt.Printf("\n%-16s %s\n", "cache_file:", filepath.Join(configDir(), cacheFileName))
-		fmt.Printf("%-16s %s\n", "cache_ttl:", defaultCacheTTL)
 
 		return nil
 	},
@@ -96,6 +119,7 @@ var configInitCmd = &cobra.Command{
 # remote_path: "/root/ocp/auth/kubeconfig"
 # default_email: "user@example.com"
 # default_owner: "myuser"
+# cache_ttl: "60s"   # environment info cache TTL; "0s" disables caching
 `
 
 		if err := os.WriteFile(path, []byte(defaultConfig), 0o600); err != nil {
@@ -131,6 +155,12 @@ var configSetCmd = &cobra.Command{
 		if !validKey {
 			return fmt.Errorf("invalid config key '%s'. Valid keys: %s",
 				key, strings.Join(validConfigKeys, ", "))
+		}
+
+		if durationConfigKeys[key] {
+			if err := validateConfigDurationValue(key, value); err != nil {
+				return err
+			}
 		}
 
 		// Type coercion for boolean
@@ -324,11 +354,16 @@ var cacheStatusCmd = &cobra.Command{
 			fmt.Printf("Newest entry: %s\n", newest)
 		}
 
-		ttl := viper.GetString("cache_ttl")
-		if ttl == "" {
-			ttl = defaultCacheTTL
+		ttl, err := resolveCacheTTL()
+		if err != nil {
+			return err
 		}
-		fmt.Printf("TTL: %s\n", ttl)
+
+		if ttl == 0 {
+			fmt.Printf("TTL: %s (caching disabled)\n", ttl)
+		} else {
+			fmt.Printf("TTL: %s\n", ttl)
+		}
 
 		return nil
 	},

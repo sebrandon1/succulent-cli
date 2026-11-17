@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -68,22 +69,10 @@ func persistentPreRun(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	succulentURL = viper.GetString("url")
-	verifySSL = viper.GetBool("verify_ssl")
-	caCertPath = viper.GetString("ca_cert")
-
-	sharedClient, err = lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
-	if err != nil {
+	if err := initSharedClient(cmd.Context()); err != nil {
 		return err
 	}
-	sharedClient.SetUserAgentVersion(cliVersion)
 
-	sharedClient.Logger = slog.Default()
-	if !viper.GetBool("skip_version_check") && cliVersion != "devel" && cliVersion != "dev" && cliVersion != "" {
-		warnOnVersionMismatch(cmd.Context(), sharedClient, cliVersion, os.Stderr)
-	}
-
-	sharedCache = lib.NewCache(configDir(), 60*time.Second)
 	selectedEnvironments = nil
 
 	if supportsEnvironmentGroups(cmd) {
@@ -161,6 +150,69 @@ func configDir() string {
 	return filepath.Join(home, ".config", "succulent-cli")
 }
 
+// initSharedClient builds the shared HTTP client and info cache from the
+// resolved flag, env, and config values.
+func initSharedClient(ctx context.Context) error {
+	succulentURL = viper.GetString("url")
+	verifySSL = viper.GetBool("verify_ssl")
+	caCertPath = viper.GetString("ca_cert")
+
+	client, err := lib.NewClientWithTimeout(succulentURL, !verifySSL, caCertPath, time.Duration(httpTimeout)*time.Second)
+	if err != nil {
+		return err
+	}
+
+	client.SetUserAgentVersion(cliVersion)
+	client.Logger = slog.Default()
+	sharedClient = client
+
+	if !viper.GetBool("skip_version_check") && cliVersion != "devel" && cliVersion != "dev" && cliVersion != "" {
+		warnOnVersionMismatch(ctx, sharedClient, cliVersion, os.Stderr)
+	}
+
+	cacheTTL, err := resolveCacheTTL()
+	if err != nil {
+		return err
+	}
+
+	sharedCache = lib.NewCache(configDir(), cacheTTL)
+
+	return nil
+}
+
+// durationSetting reads a duration-valued setting from viper as a string and
+// parses it with time.ParseDuration. Viper's own GetDuration accepts bare
+// numbers and turns them into nanoseconds, so "30" would silently mean 30ns;
+// ParseDuration rejects it instead.
+func durationSetting(key string, def time.Duration) (time.Duration, error) {
+	raw := strings.TrimSpace(viper.GetString(key))
+	if raw == "" {
+		return def, nil
+	}
+
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s %q: use a duration with units, for example 30s or 2m", key, raw)
+	}
+
+	return d, nil
+}
+
+// resolveCacheTTL returns the effective info-cache TTL. Zero disables caching;
+// negative values are rejected.
+func resolveCacheTTL() (time.Duration, error) {
+	ttl, err := durationSetting("cache_ttl", defaultCacheTTL)
+	if err != nil {
+		return 0, err
+	}
+
+	if ttl < 0 {
+		return 0, fmt.Errorf("cache TTL must not be negative (got %s); use 0 to disable caching", ttl)
+	}
+
+	return ttl, nil
+}
+
 func skipEnvRequirement(cmd *cobra.Command) bool {
 	return cmd.Name() == "list"
 }
@@ -215,6 +267,9 @@ func initConfig() {
 	viper.SetDefault("strict_ssh", false)
 	viper.SetDefault("default_email", "")
 	viper.SetDefault("default_owner", "")
+	// Durations are stored as strings: a time.Duration default would be
+	// written to config.yaml as integer nanoseconds by `config set`.
+	viper.SetDefault("cache_ttl", defaultCacheTTL.String())
 
 	_ = viper.ReadInConfig()
 }
@@ -234,6 +289,8 @@ func init() {
 		"Output format (json or table)")
 	rootCmd.PersistentFlags().IntVar(&httpTimeout, "timeout", 60,
 		"HTTP request timeout in seconds")
+	rootCmd.PersistentFlags().Duration("cache-ttl", defaultCacheTTL,
+		"Environment info cache TTL (e.g. 60s); 0 disables caching (env: SUCCULENT_CACHE_TTL)")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false,
 		"Enable debug logging to stderr")
 	rootCmd.PersistentFlags().Bool("quiet", false,
@@ -250,6 +307,7 @@ func init() {
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 	_ = viper.BindPFlag("skip_version_check", rootCmd.PersistentFlags().Lookup("no-version-check"))
+	_ = viper.BindPFlag("cache_ttl", rootCmd.PersistentFlags().Lookup("cache-ttl"))
 
 	rootCmd.AddCommand(getCmd)
 	rootCmd.AddCommand(kubeconfigCmd)

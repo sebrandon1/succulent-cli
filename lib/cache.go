@@ -24,6 +24,9 @@ type Cache struct {
 	store *jsonstore.Store[cacheFile]
 }
 
+// NewCache returns a cache rooted at dir. A ttl of zero or less disables the
+// cache: GetInfo always misses and SetInfo/SetMultipleInfo never write, so a
+// run can avoid touching the cache file at all.
 func NewCache(dir string, ttl time.Duration) *Cache {
 	return &Cache{
 		dir: dir,
@@ -32,6 +35,11 @@ func NewCache(dir string, ttl time.Duration) *Cache {
 		// compatible with earlier releases.
 		store: jsonstore.New[cacheFile](filepath.Join(dir, "cache.json"), jsonstore.WithIndent(false)),
 	}
+}
+
+// cachingEnabled reports whether the cache may read or write entries.
+func (c *Cache) cachingEnabled() bool {
+	return c.ttl > 0
 }
 
 func (c *Cache) load() *cacheFile {
@@ -53,6 +61,10 @@ func (c *Cache) save(cf *cacheFile) error {
 }
 
 func (c *Cache) GetInfo(env string) (*ClusterInfo, bool) {
+	if !c.cachingEnabled() {
+		return nil, false
+	}
+
 	cf := c.load()
 
 	entry, ok := cf.Environments[env]
@@ -68,6 +80,10 @@ func (c *Cache) GetInfo(env string) (*ClusterInfo, bool) {
 }
 
 func (c *Cache) SetInfo(env string, info *ClusterInfo) {
+	if !c.cachingEnabled() {
+		return
+	}
+
 	cf := c.load()
 
 	cf.Environments[env] = cachedInfoEntry{
@@ -81,6 +97,10 @@ func (c *Cache) SetInfo(env string, info *ClusterInfo) {
 }
 
 func (c *Cache) SetMultipleInfo(entries map[string]*ClusterInfo) {
+	if !c.cachingEnabled() {
+		return
+	}
+
 	cf := c.load()
 
 	now := time.Now()
