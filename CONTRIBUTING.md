@@ -1,6 +1,6 @@
 # Contributing to succulent-cli
 
-Requires Go 1.26+.
+Requires Go 1.27+.
 
 1. Clone the repository
 2. `make build`

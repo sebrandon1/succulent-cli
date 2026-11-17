@@ -47,7 +47,7 @@ succulent-cli sno kubeconfig --env myenv
 
 ## Prerequisites
 
-- Go 1.26+ (to build from source)
+- Go 1.27+ (to build from source)
 - VPN access to the succulent service network
 
 ## Development
