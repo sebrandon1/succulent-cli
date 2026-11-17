@@ -28,11 +28,11 @@ go test ./lib -v
 
 Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go-quay).
 
-**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `getRaw`, `postForm`, and `postFormRaw`. Optional `Logger *slog.Logger` (nil = no logs) records method, URL, status, and duration; form bodies and secrets are never logged. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
+**`lib/`** — HTTP client. `Client` in `client.go` exposes `NewClient`, `NewClientWithTimeout`, `NewClientWithOptions` (with `ClientOptions` for the overall, dial, and TLS-handshake timeouts), `getRaw`, `postForm`, and `postFormRaw`. Optional `Logger *slog.Logger` (nil = no logs) records method, URL, status, and duration; form bodies and secrets are never logged. Response bodies are capped at `MaxResponseSize` (10MB) via `readLimited`, `copyLimited`, and `limitedBody`. Types live in `structs.go`.
 
 | File | Role |
 |------|------|
-| `client.go` | `Client`, `NewClient`, `NewClientWithTimeout`; `getRaw`/`postForm` request helpers |
+| `client.go` | `Client`, `ClientOptions`, `NewClient`, `NewClientWithTimeout`, `NewClientWithOptions`; `getRaw`/`postForm` request helpers |
 | `structs.go` | Request/response types and shared constants such as `StatusUp` |
 | `info.go` | `GetInfoPlan` — HTML table parse (`golang.org/x/net/html`) |
 | `log.go` | `StreamLog` |
