@@ -116,17 +116,40 @@ func TestNewAuditLogRequiresPath(t *testing.T) {
 	}
 }
 
-func TestAuditLogReadLastRejectsMalformedEntry(t *testing.T) {
+func TestAuditLogReadLastIgnoresTruncatedFinalEntry(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "audit.log")
-	if err := os.WriteFile(path, []byte("not-json\n"), 0o600); err != nil {
+	valid := `{"user_id":"alice","operation":"delete","environment":"lab1","result":"success"}`
+	// A crash mid-write leaves a partial final line with no trailing newline.
+	if err := os.WriteFile(path, []byte(valid+"\n"+`{"user_id":"bob"`), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	log, err := NewAuditLog(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := log.ReadLast(10); err == nil || !strings.Contains(err.Error(), "decoding audit entry") {
-		t.Fatalf("Expected malformed entry error, got %v", err)
+
+	entries, err := log.ReadLast(10)
+	if err != nil {
+		t.Fatalf("ReadLast should ignore a truncated final entry, got %v", err)
+	}
+	if len(entries) != 1 || entries[0].UserID != "alice" {
+		t.Fatalf("unexpected entries: %+v", entries)
+	}
+}
+
+func TestAuditLogReadLastRejectsMalformedInteriorEntry(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "audit.log")
+	valid := `{"user_id":"alice","operation":"delete","environment":"lab1","result":"success"}`
+	if err := os.WriteFile(path, []byte(valid+"\nnot-json\n"+valid+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	log, err := NewAuditLog(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := log.ReadLast(10); err == nil || !strings.Contains(err.Error(), "decoding audit entry on line 2") {
+		t.Fatalf("Expected malformed interior entry error, got %v", err)
 	}
 }
 

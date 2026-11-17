@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -108,12 +109,11 @@ func (l *AuditLog) ReadLast(limit int) ([]AuditEntry, error) {
 	entries := make([]AuditEntry, 0, limit)
 	scanner := bufio.NewScanner(file)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-	line := 0
-	for scanner.Scan() {
-		line++
+
+	appendEntry := func(raw []byte, lineNumber int) error {
 		var entry AuditEntry
-		if err := json.Unmarshal(scanner.Bytes(), &entry); err != nil {
-			return nil, fmt.Errorf("decoding audit entry on line %d: %w", line, err)
+		if err := json.Unmarshal(raw, &entry); err != nil {
+			return fmt.Errorf("decoding audit entry on line %d: %w", lineNumber, err)
 		}
 
 		if len(entries) < limit {
@@ -122,9 +122,35 @@ func (l *AuditLog) ReadLast(limit int) ([]AuditEntry, error) {
 			copy(entries, entries[1:])
 			entries[len(entries)-1] = entry
 		}
+
+		return nil
+	}
+
+	// Hold each line back until the next one is scanned, so the final line can
+	// be treated as a possibly truncated write instead of corruption.
+	line := 0
+	previousLine := 0
+	var previous []byte
+
+	for scanner.Scan() {
+		line++
+		if previous != nil {
+			if err := appendEntry(previous, previousLine); err != nil {
+				return nil, err
+			}
+		}
+
+		previous = append(previous[:0], scanner.Bytes()...)
+		previousLine = line
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("reading audit log: %w", err)
+	}
+
+	if previous != nil {
+		if err := appendEntry(previous, previousLine); err != nil {
+			slog.Default().Warn("ignoring truncated final audit entry", "line", previousLine, "err", err)
+		}
 	}
 
 	return entries, nil
