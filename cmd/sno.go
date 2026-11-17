@@ -35,7 +35,7 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 	Example: `  succulent-cli sno provision --env myenv --owner myuser --email user@example.com --ocp-tag 4.17 --confirm
   succulent-cli sno provision --env myenv --owner myuser --email user@example.com --full-ocp-tag 4.17.0-0.nightly-2026-05-20-123456 --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if !confirmSNO {
+		if !dryRunSNO && !confirmSNO {
 			return fmt.Errorf("--confirm is required to provision an SNO cluster (use --dry-run to preview)")
 		}
 		if err := validateProvisionWatchFlags(dryRunSNO); err != nil {

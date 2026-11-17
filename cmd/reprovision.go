@@ -39,7 +39,7 @@ When stdin is a TTY, missing --owner, --email, and --ocp-tag are prompted instea
 	Example: `  succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.17 --confirm
   succulent-cli reprovision --env myenv --email user@example.com --owner myuser --ocp-tag 4.18 --release-type ci --confirm`,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		if !confirmReprovision {
+		if !dryRunReprovision && !confirmReprovision {
 			return fmt.Errorf("--confirm is required to reprovision an environment (use --dry-run to preview)")
 		}
 		if err := validateProvisionWatchFlags(dryRunReprovision); err != nil {
