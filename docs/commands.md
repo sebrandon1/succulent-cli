@@ -318,6 +318,8 @@ succulent-cli delete --env myenv --confirm
 ```bash
 succulent-cli config init
 succulent-cli config show
+succulent-cli config groups list
+succulent-cli config groups show staging
 succulent-cli config history --limit 25
 succulent-cli config history --output json
 succulent-cli config path
@@ -330,7 +332,8 @@ succulent-cli config cache clear
 ```
 
 `config history` and `config cache show` honor the global `--output` flag. JSON
-history is an array; an empty history prints `[]`.
+history is an array; an empty history prints `[]`. `config history --limit`
+defaults to 10 entries.
 
 See [Configuration](configuration.md).
 

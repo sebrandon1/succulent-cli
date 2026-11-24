@@ -41,6 +41,7 @@ Viper reads `SUCCULENT_` plus the uppercase config key. These are the variables 
 | `SUCCULENT_DIAL_TIMEOUT` | `dial_timeout` | `--dial-timeout` | `10s` | TCP connection-establishment timeout |
 | `SUCCULENT_TLS_HANDSHAKE_TIMEOUT` | `tls_handshake_timeout` | `--tls-handshake-timeout` | `10s` | TLS handshake timeout |
 | `SUCCULENT_CACHE_TTL` | `cache_ttl` | `--cache-ttl` | `60s` | Environment info cache TTL; `0` disables caching |
+| `SUCCULENT_AUDIT_LOG` | — | — | `~/.config/succulent-cli/audit.log` | Path to the operation audit log |
 
 `--output` is a flag only; it has no environment variable. `--verbose` and `--quiet` are flags/env only; they are not stored by `config set`. They cannot be set together.
 

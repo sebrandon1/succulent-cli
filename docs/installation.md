@@ -24,3 +24,20 @@ go install github.com/sebrandon1/succulent-cli@latest
 ## Prebuilt Binaries
 
 Download from the [Releases](https://github.com/sebrandon1/succulent-cli/releases) page.
+
+## Container Image
+
+The repository includes a `Dockerfile` that builds a static binary on a
+`scratch` base image:
+
+```bash
+docker build -t succulent-cli .
+docker run --rm succulent-cli list
+```
+
+The container runs as the `root` user, so mount a config directory if you rely
+on `~/.config/succulent-cli`:
+
+```bash
+docker run --rm -v ~/.config/succulent-cli:/root/.config/succulent-cli succulent-cli list
+```
