@@ -35,7 +35,7 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 | `client.go` | `Client`, `ClientOptions`, `NewClient`, `NewClientWithTimeout`, `NewClientWithOptions`; `getRaw`/`postForm` request helpers |
 | `structs.go` | Request/response types and shared constants such as `StatusUp` |
 | `info.go` | `GetInfoPlan` — HTML table parse (`golang.org/x/net/html`) |
-| `log.go` | `StreamLog` |
+| `log.go` | `StreamLog`, `FollowLog` (resuming follow for `get log --follow`), `ErrLogStillStreaming` |
 | `reprovision.go` | `Reprovision` |
 | `sno.go` | `ProvisionSNO`, `GetSNOKubeconfig` |
 | `delete.go` | `DeleteEnvironment` |
@@ -48,7 +48,7 @@ Cobra CLI with a two-layer split like [go-quay](https://github.com/sebrandon1/go
 | `cache.go` | TTL JSON file cache |
 | `kubeconfig.go` | `RemoveSSHHostKey`, `FetchKubeconfig`, `ValidateKubeconfig` (`os/exec`); `WaitForClusterReady` polls `GetInfoPlan` |
 
-**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--dial-timeout`, `--tls-handshake-timeout`, `--cache-ttl`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults.
+**`cmd/`** — Cobra. Most commands register themselves in their own `init()` with `rootCmd.AddCommand`. `root.go` defines persistent flags (`--url`, `--env`, `--verify-ssl`, `--ca-cert`, `--output`, `--timeout`, `--dial-timeout`, `--tls-handshake-timeout`, `--cache-ttl`, `--verbose`/`-v`, `--quiet`, `--no-version-check`, `--no-color`) and creates the shared `lib.Client` in `PersistentPreRunE`. `helpers.go` has `printJSON`, `printResult`, `resolveOwnerEmail`, and `saveKubeconfig`. `constants.go` holds command names and defaults. `prompt.go` prompts on an interactive TTY when required flags are missing; `groups.go` resolves environment groups and batch targets; `audit.go` records operations to the JSON Lines audit log; `color.go` gates ANSI color on `--no-color`/`NO_COLOR` and a TTY.
 
 ```text
 succulent-cli
